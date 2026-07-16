@@ -1,0 +1,7 @@
+{
+  "format": "symmetric_int8_weights",
+  "conv1_w_scale": 0.0019715395756065845,
+  "conv2_w_scale": 0.0012498315190896392,
+  "bias_note": "bias_int32 = round(b_float / (w_scale * a_scale)), currently a_scale=1.0 (provisional)",
+  "weight_layout": "flattened PyTorch order: (out_ch, in_ch, kH, kW) in C-order"
+}

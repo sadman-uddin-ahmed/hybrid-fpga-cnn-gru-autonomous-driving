@@ -1,0 +1,38 @@
+Stage-04 Hybrid CNN-GRU Validation
+====================================================================
+Validation source: four RTL-verified fixed-point Conv2-ReLU-MaxPool output vectors
+Sequence: 000, frames 0 to 3
+Generated: 2026-06-30T23:56:22
+
+Temporal feature folder: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\Verilog_HDL\cnn_fpga_accelerator\data\mem\temporal_inputs
+Activation metadata: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\Python_ML\exports\quant\W8_txt\act_scales.json
+CNN-GRU model definition: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\ML_Python\models.py
+CNN-GRU checkpoint: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\ML_Python\cnn_gru_model.pt
+Conv2 output scale (a2_scale): 0.011327220698980
+
+Hybrid feature tensor shape: (1, 4, 8192)
+Hybrid CNN-GRU prediction: 1 (Car present)
+Hybrid confidence: 96.657193%
+
+Expected feature source files:
+  sequence_000_frame_0_expected.mem | sha256=cacb9f5a121831111f71c7b8577527024363ee1dd4632b1757b22c8699ca40e1
+  sequence_000_frame_1_expected.mem | sha256=4e09ac6af0c691ec7a7f4872c52825f2207ddd42f0a77de812b426179b7644c7
+  sequence_000_frame_2_expected.mem | sha256=d780046bcb3febb9fafea5825616e7eab8763d4f4aa76ebd62a5681c79717a67
+  sequence_000_frame_3_expected.mem | sha256=ff96911cfc8b3f6fe2e0fa400e23f2eae28bdf21a456ae5ed29ee7c0167a808e
+
+Checkpoint metadata:
+  best_val_accuracy: 0.9892904953145917
+  best_epoch: 9
+  sequence_length: 4
+  feature_size: 8192
+
+Comparison with original Stage-03 sequence:
+  Reference test-feature file: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\ML_Python\prepared_features\test_features.pt
+  Ground-truth label: 1 (Car present)
+  Original Stage-03 prediction: 1 (Car present)
+  Original confidence: 96.251768%
+  Maximum feature difference: 0.0142679811
+  Mean feature difference: 0.0018423868
+  Maximum logit difference: 0.0596141815
+  Prediction preservation: PASS
+  Hybrid classification correctness: CORRECT

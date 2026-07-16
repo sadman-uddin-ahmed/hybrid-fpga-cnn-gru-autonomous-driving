@@ -1,0 +1,9 @@
+{
+  "a0_scale": 0.007874015748031496,
+  "a1_scale": 0.012802751045527421,
+  "conv1_w_scale": 0.0019715395756065845,
+  "conv2_w_scale": 0.0012498315190896392,
+  "bias_rule": "b_int32 = round(b_float / (a_scale * w_scale))",
+  "conv1_bias_domain": "uses a0_scale * conv1_w_scale",
+  "conv2_bias_domain": "uses a1_scale * conv2_w_scale (conv2 input is conv1 output)"
+}

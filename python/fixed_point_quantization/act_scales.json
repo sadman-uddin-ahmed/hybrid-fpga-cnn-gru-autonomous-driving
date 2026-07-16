@@ -1,0 +1,12 @@
+{
+  "note": "Fixed symmetric int8 activation scales (scale = max_abs/127).",
+  "calibration_batches_used": 50,
+  "a1_max_abs": 1.6259493827819824,
+  "a2_max_abs": 1.4385570287704468,
+  "a1_scale": 0.012802751045527421,
+  "a2_scale": 0.011327220698979895,
+  "where": {
+    "a1": "after Conv1->ReLU->MaxPool (net[2])",
+    "a2": "after Conv2->ReLU->MaxPool (net[5])"
+  }
+}

@@ -1,0 +1,190 @@
+# Dataset and Artifact Notes
+
+This repository is a public technical portfolio version of an ongoing MSc dissertation project. It contains selected source code, RTL modules, verification files, result summaries, and implementation evidence.
+
+It does not contain raw datasets, trained model checkpoints, generated feature tensors, memory-vector files, bitstreams, or full dissertation reports.
+
+## Dataset usage
+
+The project uses autonomous-driving image data for binary car-presence classification.
+
+The classification task is:
+
+| Label | Meaning     |
+| ----- | ----------- |
+| 0     | No car      |
+| 1     | Car present |
+
+The dataset files are not redistributed in this repository. Users who want to reproduce or extend the work should obtain the dataset from the official dataset provider and follow the applicable licensing and usage conditions.
+
+## Why dataset files are excluded
+
+Dataset files are excluded for the following reasons:
+
+* They are large and unsuitable for a lightweight public GitHub repository.
+* They may be subject to external dataset licensing conditions.
+* They are not required for reviewing the implementation structure.
+* The repository is intended as a technical portfolio, not a complete dataset mirror.
+* Keeping datasets separate prevents accidental redistribution of third-party data.
+
+Excluded dataset-related files include:
+
+```text
+data/
+dataset/
+datasets/
+kitti/
+KITTI/
+cifar-10-batches-py/
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.rar
+```
+
+## Model checkpoints
+
+Trained model checkpoints are intentionally excluded.
+
+Excluded checkpoint formats include:
+
+```text
+*.pt
+*.pth
+*.pkl
+*.ckpt
+*.onnx
+```
+
+The repository documents the model architecture, workflow, and result summaries without redistributing trained model weights.
+
+## Generated feature tensors
+
+Generated feature tensors are excluded because they can be large and may be derived from dataset samples.
+
+Excluded generated tensor formats include:
+
+```text
+*.npy
+*.npz
+*.pt
+```
+
+The public repository explains the feature representation instead:
+
+```text
+CNN feature size per frame = 8,192
+Temporal sequence length = 4 frames
+Temporal feature size = 4 × 8,192 = 32,768
+```
+
+## Generated memory-vector files
+
+Generated memory files are excluded from the public repository.
+
+These files may contain dataset-derived fixed-point input values, expected-output vectors, or FPGA-ready memory initialisation data.
+
+Excluded memory-vector files include:
+
+```text
+*.mem
+feature_text_files/
+quantized_sequences/
+exports/vectors/
+```
+
+The Verilog and Python source code remain included so that the workflow can be reviewed without publishing generated dataset-derived vectors.
+
+## Vivado generated files
+
+Vivado project outputs and generated implementation artifacts are excluded.
+
+Excluded Vivado files include:
+
+```text
+.Xil/
+*.jou
+*.log
+*.str
+*.dcp
+*.bit
+*.bin
+*.mcs
+*.ltx
+*.wdb
+*.vcd
+*.rpt
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+xsim.dir/
+```
+
+The repository includes selected screenshots and result summaries instead of generated Vivado build folders.
+
+## Bitstreams and checkpoints
+
+FPGA bitstreams and Vivado design checkpoints are not included.
+
+Excluded files include:
+
+```text
+*.bit
+*.dcp
+```
+
+These files are generated artifacts rather than source code. They can also make a repository unnecessarily large and less suitable for public review.
+
+## Full dissertation materials
+
+Full academic reports and dissertation submission materials are excluded.
+
+Excluded academic materials include:
+
+* full dissertation reports;
+* full internal progress reports;
+* supervisor feedback;
+* assessment drafts;
+* private notes;
+* university submission files.
+
+This repository is not intended to replace the official dissertation submission. It is a technical showcase of selected implementation work.
+
+## What is included
+
+The repository includes selected public-safe files such as:
+
+* Python source code for CNN baseline development;
+* Python source code for fixed-point quantization preparation;
+* Python source code for hybrid feature validation;
+* Verilog RTL modules;
+* Verilog testbenches;
+* Basys-3 XDC constraints;
+* selected result summaries;
+* selected Vivado screenshots;
+* selected physical FPGA validation photos;
+* documentation explaining the technical workflow and results.
+
+## Reproducibility note
+
+This repository does not provide a one-command reproduction package because large datasets, trained checkpoints, memory files, and generated tensors are intentionally excluded.
+
+The repository is designed to show:
+
+* the system architecture;
+* the model-selection rationale;
+* the fixed-point and FPGA workflow;
+* the RTL implementation structure;
+* the validation approach;
+* the key measured results.
+
+A complete reproduction would require the user to obtain the dataset separately, regenerate the required model checkpoints and feature files, and rebuild the Vivado project locally.
+
+## Public repository scope
+
+This repository is suitable for public portfolio review because it focuses on original implementation structure, selected source code, hardware-aware workflow, and validation evidence.
+
+It intentionally avoids publishing private, generated, oversized, or third-party-derived materials.

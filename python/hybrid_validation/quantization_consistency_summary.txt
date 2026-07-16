@@ -1,0 +1,36 @@
+Full CNN-GRU FPGA-Compatible Quantized Feature Evaluation
+==============================================================
+Test sequences: 750
+Feature tensor shape: (750, 4, 8192)
+Activation scale (a2_scale): 0.011327220698979895
+Quantized value range: 0 to 90
+Maximum feature difference: 0.0056636184
+Maximum output-logit difference: 0.0564756393
+
+Original Float-Feature CNN-GRU Results
+--------------------------------------
+Accuracy:       98.80%
+Precision:      99.56%
+Recall:         99.12%
+F1-score:       99.34%
+True Positive:  675
+True Negative:  66
+False Positive: 3
+False Negative: 6
+
+FPGA-Compatible Quantized-Feature CNN-GRU Results
+-------------------------------------------------
+Accuracy:       98.80%
+Precision:      99.56%
+Recall:         99.12%
+F1-score:       99.34%
+True Positive:  675
+True Negative:  66
+False Positive: 3
+False Negative: 6
+
+Prediction Preservation
+-----------------------
+Predictions preserved: 750/750
+Predictions changed: 0/750
+Preservation rate: 100.00%

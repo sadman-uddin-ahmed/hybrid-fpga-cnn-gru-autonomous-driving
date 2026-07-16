@@ -1,0 +1,2 @@
+model,params,checkpoint_mb,cpu_ms_per_image
+kitti_smallcnn,1054050,4.024520,10.263118
