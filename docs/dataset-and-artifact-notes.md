@@ -10,10 +10,10 @@ The project uses autonomous-driving image data for binary car-presence classific
 
 The classification task is:
 
-| Label | Meaning     |
-| ----- | ----------- |
-| 0     | No car      |
-| 1     | Car present |
+| Label | Meaning |
+|---|---|
+| 0 | No car |
+| 1 | Car present |
 
 The dataset files are not redistributed in this repository. Users who want to reproduce or extend the work should obtain the dataset from the official dataset provider and follow the applicable licensing and usage conditions.
 
@@ -21,11 +21,11 @@ The dataset files are not redistributed in this repository. Users who want to re
 
 Dataset files are excluded for the following reasons:
 
-* They are large and unsuitable for a lightweight public GitHub repository.
-* They may be subject to external dataset licensing conditions.
-* They are not required for reviewing the implementation structure.
-* The repository is intended as a technical portfolio, not a complete dataset mirror.
-* Keeping datasets separate prevents accidental redistribution of third-party data.
+- They are large and unsuitable for a lightweight public GitHub repository.
+- They may be subject to external dataset licensing conditions.
+- They are not required for reviewing the implementation structure.
+- The repository is intended as a technical portfolio, not a complete dataset mirror.
+- Keeping datasets separate prevents accidental redistribution of third-party data.
 
 Excluded dataset-related files include:
 
@@ -144,12 +144,12 @@ Full academic reports and dissertation submission materials are excluded.
 
 Excluded academic materials include:
 
-* full dissertation reports;
-* full internal progress reports;
-* supervisor feedback;
-* assessment drafts;
-* private notes;
-* university submission files.
+- full dissertation reports;
+- full internal progress reports;
+- supervisor feedback;
+- assessment drafts;
+- private notes;
+- university submission files.
 
 This repository is not intended to replace the official dissertation submission. It is a technical showcase of selected implementation work.
 
@@ -157,16 +157,16 @@ This repository is not intended to replace the official dissertation submission.
 
 The repository includes selected public-safe files such as:
 
-* Python source code for CNN baseline development;
-* Python source code for fixed-point quantization preparation;
-* Python source code for hybrid feature validation;
-* Verilog RTL modules;
-* Verilog testbenches;
-* Basys-3 XDC constraints;
-* selected result summaries;
-* selected Vivado screenshots;
-* selected physical FPGA validation photos;
-* documentation explaining the technical workflow and results.
+- Python source code for CNN baseline development;
+- Python source code for fixed-point quantization preparation;
+- Python source code for hybrid feature validation;
+- Verilog RTL modules;
+- Verilog testbenches;
+- Basys-3 XDC constraints;
+- selected result summaries;
+- selected Vivado screenshots;
+- selected physical FPGA validation photos;
+- documentation explaining the technical workflow and results.
 
 ## Reproducibility note
 
@@ -174,12 +174,12 @@ This repository does not provide a one-command reproduction package because larg
 
 The repository is designed to show:
 
-* the system architecture;
-* the model-selection rationale;
-* the fixed-point and FPGA workflow;
-* the RTL implementation structure;
-* the validation approach;
-* the key measured results.
+- the system architecture;
+- the model-selection rationale;
+- the fixed-point and FPGA workflow;
+- the RTL implementation structure;
+- the validation approach;
+- the key measured results.
 
 A complete reproduction would require the user to obtain the dataset separately, regenerate the required model checkpoints and feature files, and rebuild the Vivado project locally.
 
