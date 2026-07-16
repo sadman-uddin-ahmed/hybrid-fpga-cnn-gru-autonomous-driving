@@ -1,0 +1,68 @@
+# Python cache and environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Datasets and large data
+data/
+dataset/
+datasets/
+kitti/
+KITTI/
+cifar-10-batches-py/
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.rar
+
+# Model checkpoints and generated tensors
+*.pt
+*.pth
+*.pkl
+*.ckpt
+*.onnx
+*.npy
+*.npz
+
+# Generated fixed-point / dataset-derived vectors
+*.mem
+feature_text_files/
+quantized_sequences/
+exports/vectors/
+
+# Vivado generated files
+.Xil/
+*.jou
+*.log
+*.str
+*.dcp
+*.bit
+*.bin
+*.mcs
+*.ltx
+*.wdb
+*.vcd
+*.rpt
+
+# Vivado project/build folders
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+xsim.dir/
+
+# Editor files
+.vscode/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
