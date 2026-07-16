@@ -2,7 +2,7 @@
 
 This repository presents a public technical portfolio version of my ongoing MSc dissertation project on hardware-aware autonomous-driving perception using quantized CNN feature extraction, Verilog FPGA validation, and CNN-GRU temporal modelling.
 
-The project investigates how a compact spatial CNN perception model can be extended into a temporal perception pipeline while remaining compatible with resource-constrained FPGA deployment. The repository contains selected source code, RTL modules, verification files, result summaries, implementation screenshots, and physical validation evidence.
+The project investigates how a compact spatial CNN perception model can be extended into a temporal perception pipeline while remaining compatible with resource-constrained FPGA deployment. The repository contains selected source code, RTL modules, verification files, result summaries, implementation screenshots, architecture diagrams, and physical validation evidence.
 
 Dataset files, trained checkpoints, generated feature tensors, memory-vector files, full dissertation reports, and assessment materials are intentionally excluded.
 
@@ -20,17 +20,17 @@ This is an ongoing MSc dissertation project.
 
 Current completed work includes:
 
-* CNN baseline development for binary car-presence classification
-* Fixed-point quantization analysis and W8A8 preparation
-* FPGA-ready weight, bias, scale, and metadata export
-* Verilog CNN feature extractor implementation
-* Basys-3 Artix-7 FPGA implementation and verification
-* CNN-RNN, CNN-LSTM, and CNN-GRU temporal model comparison
-* CNN-GRU selection for hybrid validation
-* Four-frame FPGA-compatible temporal feature buffering
-* Host-side CNN-GRU validation using reconstructed FPGA-compatible features
-* Vivado synthesis, implementation, timing, resource, and power analysis
-* Physical Basys-3 validation evidence
+- CNN baseline development for binary car-presence classification
+- Fixed-point quantization analysis and W8A8 preparation
+- FPGA-ready weight, bias, scale, and metadata export
+- Verilog CNN feature extractor implementation
+- Basys-3 Artix-7 FPGA implementation and verification
+- CNN-RNN, CNN-LSTM, and CNN-GRU temporal model comparison
+- CNN-GRU selection for hybrid validation
+- Four-frame FPGA-compatible temporal feature buffering
+- Host-side CNN-GRU validation using reconstructed FPGA-compatible features
+- Vivado synthesis, implementation, timing, resource, and power analysis
+- Physical Basys-3 validation evidence
 
 ## System overview
 
@@ -45,7 +45,7 @@ The project follows a hardware-aware perception flow:
 7. The final output is a binary car-present / no-car prediction.
 
 <p align="center">
-  <img src="assets/architecture/hybrid-architecture.png" alt="Hybrid FPGA-CNN-GRU architecture diagram" width="750">
+  <img src="assets/architecture/hybrid-architecture.png" alt="Hybrid FPGA-CNN-GRU architecture diagram" width="850">
 </p>
 
 <p align="center">
@@ -66,36 +66,47 @@ CNN-GRU temporal classification
 Car-present / no-car prediction
 ```
 
+## Architecture diagrams
+
+The main hybrid processing flow is shown above. Additional architecture diagrams are included in `assets/architecture/` for deeper review of the FPGA-side control flow and host-side classification path.
+
+| Diagram | Purpose |
+|---|---|
+| [`hybrid-architecture.png`](assets/architecture/hybrid-architecture.png) | Full hybrid FPGA-CNN-GRU processing flow |
+| [`fpga-side-architecture.png`](assets/architecture/fpga-side-architecture.png) | FPGA-side bitstream architecture, temporal buffering, board controls, and output status |
+| [`four-frame-control-flow.png`](assets/architecture/four-frame-control-flow.png) | Four-frame FPGA control sequence for loading, processing, and storing temporal features |
+| [`host-side-classification-chain.png`](assets/architecture/host-side-classification-chain.png) | Host-side feature reconstruction, dequantization, tensor reshaping, and CNN-GRU classification |
+
 ## Key technical contributions
 
-* Developed a compact CNN baseline for binary car-presence classification.
-* Evaluated quantization robustness and selected W8A8 fixed-point representation.
-* Exported FPGA-ready weights, corrected biases, activation scales, and metadata.
-* Implemented Conv1, ReLU, MaxPool, Conv2, ReLU, and MaxPool feature extraction in Verilog HDL.
-* Verified 8,192 CNN feature outputs against Python-generated golden references.
-* Built and evaluated CNN-RNN, CNN-LSTM, and CNN-GRU temporal models using four-frame CNN feature sequences.
-* Selected CNN-GRU for hybrid validation based on recall, F1-score, false-negative reduction, and model-complexity trade-off.
-* Implemented four-frame temporal feature capture with 32,768 signed 8-bit feature values.
-* Validated hybrid FPGA-compatible feature reconstruction with host-side CNN-GRU inference.
-* Completed Vivado synthesis, implementation, timing, resource, and power analysis for the FPGA-side design.
+- Developed a compact CNN baseline for binary car-presence classification.
+- Evaluated quantization robustness and selected W8A8 fixed-point representation.
+- Exported FPGA-ready weights, corrected biases, activation scales, and metadata.
+- Implemented Conv1, ReLU, MaxPool, Conv2, ReLU, and MaxPool feature extraction in Verilog HDL.
+- Verified 8,192 CNN feature outputs against Python-generated golden references.
+- Built and evaluated CNN-RNN, CNN-LSTM, and CNN-GRU temporal models using four-frame CNN feature sequences.
+- Selected CNN-GRU for hybrid validation based on recall, F1-score, false-negative reduction, and model-complexity trade-off.
+- Implemented four-frame temporal feature capture with 32,768 signed 8-bit feature values.
+- Validated hybrid FPGA-compatible feature reconstruction with host-side CNN-GRU inference.
+- Completed Vivado synthesis, implementation, timing, resource, and power analysis for the FPGA-side design.
 
 ## Results summary
 
-| Area                                     |                     Result |
-| ---------------------------------------- | -------------------------: |
-| CNN input size                           |                64 × 64 RGB |
-| CNN feature size                         |   8,192 features per frame |
-| CNN parameters                           |                  1,054,050 |
-| Selected quantization                    |                       W8A8 |
-| Temporal sequence length                 |                   4 frames |
-| Temporal feature shape                   |                  4 × 8,192 |
-| FPGA-compatible temporal feature values  |                     32,768 |
-| Temporal models evaluated                | CNN-RNN, CNN-LSTM, CNN-GRU |
-| Selected temporal model                  |                    CNN-GRU |
-| CNN-GRU test accuracy                    |                     99.07% |
-| CNN-GRU recall                           |                     99.85% |
-| CNN-GRU F1-score                         |                     99.49% |
-| Hybrid full-test prediction preservation |                  750 / 750 |
+| Area | Result |
+|---|---:|
+| CNN input size | 64 × 64 RGB |
+| CNN feature size | 8,192 features per frame |
+| CNN parameters | 1,054,050 |
+| Selected quantization | W8A8 |
+| Temporal sequence length | 4 frames |
+| Temporal feature shape | 4 × 8,192 |
+| FPGA-compatible temporal feature values | 32,768 |
+| Temporal models evaluated | CNN-RNN, CNN-LSTM, CNN-GRU |
+| Selected temporal model | CNN-GRU |
+| CNN-GRU test accuracy | 99.07% |
+| CNN-GRU recall | 99.85% |
+| CNN-GRU F1-score | 99.49% |
+| Hybrid full-test prediction preservation | 750 / 750 |
 
 A more detailed result breakdown is provided in [`docs/results-summary.md`](docs/results-summary.md).
 
@@ -157,12 +168,12 @@ The hybrid architecture uses the FPGA-side CNN feature extractor as the spatial 
 
 The temporal feature buffer stores the four generated feature vectors in order:
 
-| Frame   | Feature index range | Buffer address range |
-| ------- | ------------------: | -------------------: |
-| Frame 0 |          0 to 8,191 |           0 to 8,191 |
-| Frame 1 |          0 to 8,191 |      8,192 to 16,383 |
-| Frame 2 |          0 to 8,191 |     16,384 to 24,575 |
-| Frame 3 |          0 to 8,191 |     24,576 to 32,767 |
+| Frame | Feature index range | Buffer address range |
+|---|---:|---:|
+| Frame 0 | 0 to 8,191 | 0 to 8,191 |
+| Frame 1 | 0 to 8,191 | 8,192 to 16,383 |
+| Frame 2 | 0 to 8,191 | 16,384 to 24,575 |
+| Frame 3 | 0 to 8,191 | 24,576 to 32,767 |
 
 <p align="center">
   <img src="assets/vivado_results/hybrid-temporal-capture-simulation.png" alt="Four-frame temporal feature-buffer verification simulation" width="750">
@@ -176,18 +187,18 @@ The stored feature sequence is reconstructed on the host side and passed to the 
 
 This validates a hybrid architecture where:
 
-* the FPGA performs quantized CNN feature extraction and temporal buffering;
-* the host-side CNN-GRU performs temporal classification.
+- the FPGA performs quantized CNN feature extraction and temporal buffering;
+- the host-side CNN-GRU performs temporal classification.
 
 ## Temporal model selection
 
 Three temporal models were compared using the same four-frame CNN feature representation:
 
-| Model    | Parameters | Test accuracy | Recall | F1-score |
-| -------- | ---------: | ------------: | -----: | -------: |
-| CNN-RNN  |  1,065,474 |        98.40% | 99.41% |   99.12% |
-| CNN-LSTM |  4,261,122 |        99.07% | 99.56% |   99.49% |
-| CNN-GRU  |  3,195,906 |        99.07% | 99.85% |   99.49% |
+| Model | Parameters | Test accuracy | Recall | F1-score |
+|---|---:|---:|---:|---:|
+| CNN-RNN | 1,065,474 | 98.40% | 99.41% | 99.12% |
+| CNN-LSTM | 4,261,122 | 99.07% | 99.56% | 99.49% |
+| CNN-GRU | 3,195,906 | 99.07% | 99.85% | 99.49% |
 
 CNN-GRU was selected because it matched CNN-LSTM test accuracy and F1-score while using fewer parameters. It also achieved the highest recall and the lowest false-negative count, which is important for car-presence perception.
 
@@ -246,14 +257,15 @@ Contains Basys-3 XDC constraints for the FPGA-side implementation.
 
 The repository includes selected visual evidence only:
 
-* Vivado elaborated-design screenshots
-* RTL simulation screenshots
-* Console verification screenshots
-* Timing-analysis screenshots
-* Resource-utilisation screenshots
-* Power-analysis screenshots
-* Synthesis and implementation screenshots
-* Basys-3 physical validation photos
+- Architecture and processing-flow diagrams
+- Vivado elaborated-design screenshots
+- RTL simulation screenshots
+- Console verification screenshots
+- Timing-analysis screenshots
+- Resource-utilisation screenshots
+- Power-analysis screenshots
+- Synthesis and implementation screenshots
+- Basys-3 physical validation photos
 
 ## Dataset note
 
@@ -269,32 +281,32 @@ Further details are provided in [`docs/dataset-and-artifact-notes.md`](docs/data
 
 The following files are intentionally excluded from this public repository:
 
-* Raw datasets
-* KITTI images and labels
-* Dataset archives
-* Trained model checkpoints
-* `.pt`, `.pth`, `.pkl`, and similar model files
-* Generated feature tensors
-* Generated `.mem` input and expected-output files
-* Vivado checkpoints
-* Vivado generated project folders
-* Bitstreams
-* Full dissertation reports
-* Supervisor feedback
-* Large ZIP archives
+- Raw datasets
+- KITTI images and labels
+- Dataset archives
+- Trained model checkpoints
+- `.pt`, `.pth`, `.pkl`, and similar model files
+- Generated feature tensors
+- Generated `.mem` input and expected-output files
+- Vivado checkpoints
+- Vivado generated project folders
+- Bitstreams
+- Full dissertation reports
+- Supervisor feedback
+- Large ZIP archives
 
 ## Tools and technologies
 
-* Python
-* PyTorch
-* NumPy
-* Verilog HDL
-* Xilinx Vivado
-* Digilent Basys-3 FPGA board
-* Artix-7 FPGA
-* Fixed-point quantization
-* CNN feature extraction
-* CNN-GRU temporal modelling
+- Python
+- PyTorch
+- NumPy
+- Verilog HDL
+- Xilinx Vivado
+- Digilent Basys-3 FPGA board
+- Artix-7 FPGA
+- Fixed-point quantization
+- CNN feature extraction
+- CNN-GRU temporal modelling
 
 ## Academic note
 
