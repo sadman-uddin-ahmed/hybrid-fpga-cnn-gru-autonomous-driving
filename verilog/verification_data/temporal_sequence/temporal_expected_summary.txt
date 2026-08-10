@@ -1,0 +1,8 @@
+Stage-04 temporal expected-feature export
+Reference: current Stage-02 fixed-point RTL convention
+Baseline self-check: PASS (8192/8192)
+
+Frame 0: values=8192, range=0..65, nonzero=4217, sha256=cacb9f5a121831111f71c7b8577527024363ee1dd4632b1757b22c8699ca40e1
+Frame 1: values=8192, range=0..75, nonzero=4223, sha256=4e09ac6af0c691ec7a7f4872c52825f2207ddd42f0a77de812b426179b7644c7
+Frame 2: values=8192, range=0..76, nonzero=4394, sha256=d780046bcb3febb9fafea5825616e7eab8763d4f4aa76ebd62a5681c79717a67
+Frame 3: values=8192, range=0..78, nonzero=4531, sha256=ff96911cfc8b3f6fe2e0fa400e23f2eae28bdf21a456ae5ed29ee7c0167a808e
