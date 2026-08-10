@@ -31,7 +31,13 @@ cifar-10-batches-py/
 *.npz
 
 # Generated fixed-point / dataset-derived vectors
+
 *.mem
+
+# Allow curated FPGA verification data
+!verilog/verification_data/parameters/*.mem
+!verilog/verification_data/temporal_sequence/*.mem
+
 feature_text_files/
 quantized_sequences/
 exports/vectors/
