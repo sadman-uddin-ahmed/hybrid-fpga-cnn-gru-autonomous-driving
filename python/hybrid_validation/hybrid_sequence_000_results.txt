@@ -4,10 +4,10 @@ Validation source: four RTL-verified fixed-point Conv2-ReLU-MaxPool output vecto
 Sequence: 000, frames 0 to 3
 Generated: 2026-06-30T23:56:22
 
-Temporal feature folder: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\Verilog_HDL\cnn_fpga_accelerator\data\mem\temporal_inputs
-Activation metadata: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\Python_ML\exports\quant\W8_txt\act_scales.json
-CNN-GRU model definition: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\ML_Python\models.py
-CNN-GRU checkpoint: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\ML_Python\cnn_gru_model.pt
+Temporal feature source: four-frame RTL-verified expected feature vectors
+Activation metadata: W8A8 Conv2 activation-scale metadata
+CNN-GRU model definition: host-side CNN-GRU model
+CNN-GRU checkpoint: trained CNN-GRU checkpoint
 Conv2 output scale (a2_scale): 0.011327220698980
 
 Hybrid feature tensor shape: (1, 4, 8192)
@@ -26,10 +26,10 @@ Checkpoint metadata:
   sequence_length: 4
   feature_size: 8192
 
-Comparison with original Stage-03 sequence:
-  Reference test-feature file: D:\LJMU\Modules\MSc_Dissertation\Dissertation_Framework\Codes\ML_Python\prepared_features\test_features.pt
+Comparison with original temporal sequence:
+  Reference: original floating-point test feature sequence
   Ground-truth label: 1 (Car present)
-  Original Stage-03 prediction: 1 (Car present)
+  Original CNN-GRU prediction: 1 (Car present)
   Original confidence: 96.251768%
   Maximum feature difference: 0.0142679811
   Mean feature difference: 0.0018423868
