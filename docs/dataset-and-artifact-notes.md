@@ -1,10 +1,12 @@
 # Dataset and Artifact Notes
 
-This repository is a public technical portfolio version of an ongoing MSc dissertation project. It contains selected source code, RTL modules, verification files, result summaries, and implementation evidence.
+This repository is a public technical portfolio version of an ongoing MSc dissertation project. It contains selected source code, RTL modules, verification data, result summaries, implementation evidence, and documentation.
 
-It does not contain raw datasets, trained model checkpoints, generated feature tensors, memory-vector files, bitstreams, or full dissertation reports.
+The repository intentionally excludes the full datasets, trained model checkpoints, bulk generated feature tensors, Vivado build products, bitstreams, and complete dissertation submission materials.
 
-## Dataset usage
+A small curated set of FPGA verification memory files is intentionally included to support reproduction of the published four-frame RTL regression.
+
+## Dataset Usage
 
 The project uses autonomous-driving image data for binary car-presence classification.
 
@@ -15,19 +17,21 @@ The classification task is:
 | 0 | No car |
 | 1 | Car present |
 
-The dataset files are not redistributed in this repository. Users who want to reproduce or extend the work should obtain the dataset from the official dataset provider and follow the applicable licensing and usage conditions.
+The full dataset is not redistributed in this repository.
 
-## Why dataset files are excluded
+Users who want to reproduce or extend the complete machine-learning workflow should obtain the dataset from the official dataset provider and comply with the applicable licensing and usage conditions.
 
-Dataset files are excluded for the following reasons:
+## Why the Full Dataset Is Excluded
 
-- They are large and unsuitable for a lightweight public GitHub repository.
-- They may be subject to external dataset licensing conditions.
-- They are not required for reviewing the implementation structure.
-- The repository is intended as a technical portfolio, not a complete dataset mirror.
-- Keeping datasets separate prevents accidental redistribution of third-party data.
+Dataset files are excluded because:
 
-Excluded dataset-related files include:
+- they are large and unsuitable for a lightweight public repository
+- they may be subject to external licensing requirements
+- they are not required for reviewing the RTL implementation structure
+- the repository is intended as a technical portfolio rather than a dataset mirror
+- keeping the full dataset separate avoids accidental redistribution of third-party data
+
+The `.gitignore` excludes common dataset locations and archives such as:
 
 ```text
 data/
@@ -43,11 +47,11 @@ cifar-10-batches-py/
 *.rar
 ```
 
-## Model checkpoints
+## Model Checkpoints
 
 Trained model checkpoints are intentionally excluded.
 
-Excluded checkpoint formats include:
+Excluded formats include:
 
 ```text
 *.pt
@@ -57,11 +61,11 @@ Excluded checkpoint formats include:
 *.onnx
 ```
 
-The repository documents the model architecture, workflow, and result summaries without redistributing trained model weights.
+The repository documents the model architectures, processing workflow, and measured results without redistributing trained model checkpoints.
 
-## Generated feature tensors
+## Generated Feature Tensors
 
-Generated feature tensors are excluded because they can be large and may be derived from dataset samples.
+Bulk generated feature tensors are excluded because they can be large and may be derived directly from dataset samples.
 
 Excluded generated tensor formats include:
 
@@ -71,36 +75,134 @@ Excluded generated tensor formats include:
 *.pt
 ```
 
-The public repository explains the feature representation instead:
+The public documentation instead describes the feature representation:
 
 ```text
 CNN feature size per frame = 8,192
-Temporal sequence length = 4 frames
-Temporal feature size = 4 × 8,192 = 32,768
+Temporal sequence length   = 4 frames
+Temporal feature size      = 4 × 8,192
+                           = 32,768 values
 ```
 
-## Generated memory-vector files
+## Curated FPGA Verification Memory Files
 
-Generated memory files are excluded from the public repository.
+Generated `.mem` files are excluded by default, but a deliberately selected verification subset is included under:
 
-These files may contain dataset-derived fixed-point input values, expected-output vectors, or FPGA-ready memory initialisation data.
+```text
+verilog/verification_data/
+```
 
-Excluded memory-vector files include:
+The published parameter files are:
+
+```text
+parameters/
+├── conv1_w.mem
+├── conv1_b_int32_correct.mem
+├── conv2_w.mem
+└── conv2_b_int32_correct.mem
+```
+
+The published four-frame verification sequence is:
+
+```text
+temporal_sequence/
+├── sequence_000_frame_0_input.mem
+├── sequence_000_frame_0_expected.mem
+├── sequence_000_frame_1_input.mem
+├── sequence_000_frame_1_expected.mem
+├── sequence_000_frame_2_input.mem
+├── sequence_000_frame_2_expected.mem
+├── sequence_000_frame_3_input.mem
+├── sequence_000_frame_3_expected.mem
+└── temporal_expected_summary.txt
+```
+
+Each input frame contains:
+
+```text
+64 × 64 × 3 = 12,288
+```
+
+quantized input values.
+
+Each expected output file contains:
+
+```text
+8,192
+```
+
+signed 8-bit CNN feature values.
+
+The complete temporal regression therefore verifies:
+
+```text
+4 × 8,192 = 32,768
+```
+
+expected feature values.
+
+These files are included specifically to support the public RTL verification workflow.
+
+Bulk generated memory vectors remain excluded.
+
+The `.gitignore` therefore follows the pattern:
 
 ```text
 *.mem
-feature_text_files/
-quantized_sequences/
-exports/vectors/
 ```
 
-The Verilog and Python source code remain included so that the workflow can be reviewed without publishing generated dataset-derived vectors.
+with explicit exceptions for the curated files under:
 
-## Vivado generated files
+```text
+verilog/verification_data/parameters/
+verilog/verification_data/temporal_sequence/
+```
 
-Vivado project outputs and generated implementation artifacts are excluded.
+Further instructions are available in:
 
-Excluded Vivado files include:
+[`../verilog/verification_data/README.md`](../verilog/verification_data/README.md)
+
+## FPGA Constraints
+
+Board-specific Xilinx Design Constraints are included for both FPGA targets:
+
+```text
+verilog/constraints/
+├── basys3/
+│   ├── cnn_feature_demo_top_baseline.xdc
+│   └── cnn_feature_basys3.xdc
+│
+└── nexys_video/
+    └── cnn_feature_nexys_video.xdc
+```
+
+The baseline Basys-3 constraint file is retained separately from the current board-specific constraint configuration so that the earlier implementation remains identifiable.
+
+## Baseline and Optimized RTL
+
+The repository separates the earlier validated RTL from the current optimized architecture:
+
+```text
+verilog/rtl/
+├── baseline/
+└── optimized/
+```
+
+Likewise, verification testbenches are separated into:
+
+```text
+verilog/testbenches/
+├── baseline/
+└── optimized/
+```
+
+This preserves the architectural progression without mixing the reference implementation with the later pipelined and multi-lane design.
+
+## Vivado Generated Files
+
+Vivado-generated build products are intentionally excluded.
+
+Excluded files and directories include:
 
 ```text
 .Xil/
@@ -123,68 +225,102 @@ Excluded Vivado files include:
 xsim.dir/
 ```
 
-The repository includes selected screenshots and result summaries instead of generated Vivado build folders.
+Selected screenshots and documented metrics are provided instead of complete Vivado-generated project directories.
 
-## Bitstreams and checkpoints
+## Bitstreams and Checkpoints
 
-FPGA bitstreams and Vivado design checkpoints are not included.
+FPGA bitstreams and Vivado design checkpoints are not distributed.
 
-Excluded files include:
+Examples include:
 
 ```text
 *.bit
 *.dcp
 ```
 
-These files are generated artifacts rather than source code. They can also make a repository unnecessarily large and less suitable for public review.
+These are generated implementation artifacts rather than primary source files.
 
-## Full dissertation materials
+Both Basys-3 and Nexys Video implementation stages are represented in the repository through RTL, constraints, documentation, timing/resource evidence, and selected physical validation images.
 
-Full academic reports and dissertation submission materials are excluded.
+## Full Dissertation Materials
+
+Complete academic submission materials remain private.
 
 Excluded academic materials include:
 
-- full dissertation reports;
-- full internal progress reports;
-- supervisor feedback;
-- assessment drafts;
-- private notes;
-- university submission files.
+- full dissertation reports
+- internal progress reports
+- assessment drafts
+- supervisor correspondence
+- private project notes
+- university submission files
 
-This repository is not intended to replace the official dissertation submission. It is a technical showcase of selected implementation work.
+This repository is not intended to replace the official dissertation submission.
 
-## What is included
+## What Is Included
 
-The repository includes selected public-safe files such as:
+The public repository includes selected material such as:
 
-- Python source code for CNN baseline development;
-- Python source code for fixed-point quantization preparation;
-- Python source code for hybrid feature validation;
-- Verilog RTL modules;
-- Verilog testbenches;
-- Basys-3 XDC constraints;
-- selected result summaries;
-- selected Vivado screenshots;
-- selected physical FPGA validation photos;
-- documentation explaining the technical workflow and results.
+- CNN baseline Python source
+- fixed-point quantisation scripts and metadata
+- hybrid CNN-GRU validation scripts
+- baseline Verilog RTL
+- current optimized Verilog RTL
+- baseline and optimized Verilog testbenches
+- Basys-3 FPGA constraints
+- Nexys Video FPGA constraints
+- curated W8A8 parameter memory files
+- one curated four-frame RTL verification sequence
+- result summaries
+- FPGA scalability documentation
+- FPGA architecture-optimisation documentation
+- architecture diagrams
+- Vivado verification and implementation screenshots
+- Basys-3 physical validation evidence
+- Nexys Video physical validation evidence
 
-## Reproducibility note
+## Reproducibility Scope
 
-This repository does not provide a one-command reproduction package because large datasets, trained checkpoints, memory files, and generated tensors are intentionally excluded.
+The repository supports reproduction of the published **FPGA RTL verification flow** using the curated parameter files and four-frame input/reference sequence.
 
-The repository is designed to show:
+The optimized temporal regression uses:
 
-- the system architecture;
-- the model-selection rationale;
-- the fixed-point and FPGA workflow;
-- the RTL implementation structure;
-- the validation approach;
-- the key measured results.
+```text
+verilog/testbenches/optimized/cnn_temporal_capture_tb.v
+```
 
-A complete reproduction would require the user to obtain the dataset separately, regenerate the required model checkpoints and feature files, and rebuild the Vivado project locally.
+with the files under:
 
-## Public repository scope
+```text
+verilog/verification_data/
+```
 
-This repository is suitable for public portfolio review because it focuses on original implementation structure, selected source code, hardware-aware workflow, and validation evidence.
+The repository does **not** provide complete one-command reproduction of the entire machine-learning training workflow because the full dataset and trained checkpoints are intentionally excluded.
 
-It intentionally avoids publishing private, generated, oversized, or third-party-derived materials.
+Accordingly, two levels of reproducibility should be distinguished:
+
+### FPGA RTL Verification
+
+The repository provides the selected RTL, testbench, CNN parameters, input vectors, and expected feature vectors required for the published four-frame regression.
+
+### Complete Machine-Learning Retraining
+
+Full retraining requires the external dataset and regeneration of trained model checkpoints and other derived artifacts.
+
+## Public Repository Scope
+
+The repository is designed primarily for technical review of:
+
+- CNN and temporal-model development
+- fixed-point conversion
+- FPGA-compatible feature representation
+- Verilog RTL architecture
+- self-checking verification
+- FPGA device scalability
+- architectural bottleneck analysis
+- pipelining and multi-lane processing
+- resource utilisation
+- timing closure
+- physical FPGA deployment evidence
+
+It deliberately balances technical reproducibility with responsible exclusion of large, generated, private, and third-party materials.
