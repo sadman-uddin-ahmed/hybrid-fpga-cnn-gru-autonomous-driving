@@ -113,10 +113,9 @@ Additional architecture diagrams are available in `assets/architecture/`.
 | Diagram | Purpose |
 |---|---|
 | [`hybrid-architecture.png`](assets/architecture/hybrid-architecture.png) | Complete hybrid FPGA-CNN-GRU processing flow |
-| [`fpga-side-architecture.png`](assets/architecture/fpga-side-architecture.png) | FPGA-side processing, temporal buffering, controls, and board status |
-| [`four-frame-control-flow.png`](assets/architecture/four-frame-control-flow.png) | Four-frame FPGA loading, processing, and storage sequence |
+| [`fpga-side-architecture.png`](assets/architecture/fpga-side-architecture.png) | Baseline Basys-3 FPGA-side architecture showing CNN feature extraction, temporal buffering, board controls, and status logic before later architectural optimisation |
+| [`four-frame-control-flow.png`](assets/architecture/four-frame-control-flow.png) | Baseline four-frame FPGA control sequence used before the later pipelined and multi-lane architecture optimisations |
 | [`host-side-classification-chain.png`](assets/architecture/host-side-classification-chain.png) | Host-side reconstruction, tensor preparation, and CNN-GRU classification |
-
 ---
 
 # Headline Results
