@@ -8,14 +8,16 @@ The final FPGA architecture reduces four-frame CNN feature-extraction latency fr
 
 Key final results:
 
-- **353.93× total speedup** relative to the original FPGA architecture
-- **99.717% total latency reduction**
-- **19.623095× speedup** relative to the preceding four-lane scheduled architecture
-- **2.894365 ms average latency per frame**
-- **345.498926 fps effective throughput**
-- **32,768 / 32,768 expected W8A8 temporal features matched**
+- **11.577460 ms** four-frame latency
+- **2.894365 ms** average latency per frame
+- **345.498926 fps** effective throughput
+- **19.623095×** speedup over the preceding four-lane architecture
+- **94.903964%** latency reduction over the preceding architecture
+- approximately **353.93×** total speedup over the original FPGA implementation
+- approximately **99.717%** total latency reduction
+- **32,768 / 32,768** expected W8A8 temporal features matched
 - **0 numerical mismatches**
-- successful synthesis, implementation, routing, timing closure, and bitstream generation
+- successful synthesis, placement, routing, timing closure, and bitstream generation
 - successful physical Nexys Video execution
 
 > **Measurement note:** FPGA latency values reported in this repository are derived from board-level RTL simulation. Physical FPGA deployment has also been demonstrated, including execution of the final streaming architecture on the Nexys Video, but the detailed latency figures are not direct oscilloscope, ILA, UART, or external hardware-counter measurements.
@@ -60,7 +62,7 @@ Completed work currently includes:
 - Basys-3 Artix-7 FPGA implementation
 - physical Basys-3 validation
 - controlled Basys-3 to Nexys Video FPGA port
-- physical Nexys Video validation
+- Nexys Video implementation and physical validation
 - FPGA device-resource scalability analysis
 - detailed latency bottleneck analysis
 - pipelined Conv2 MAC optimisation
@@ -169,12 +171,12 @@ Additional architecture diagrams are available in `assets/architecture/`.
 | Metric | Result |
 |---|---:|
 | Original four-frame latency | 4097.577920 ms |
-| Stage-06 four-frame latency | 227.185600 ms |
+| Previous optimized four-frame latency | 227.185600 ms |
 | **Final streaming four-frame latency** | **11.577460 ms** |
 | Final average latency/frame | **2.894365 ms** |
 | Final throughput | **345.498926 fps** |
-| Speedup vs Stage-06 | **19.623095×** |
-| Latency reduction vs Stage-06 | **94.903964%** |
+| Speedup vs previous architecture | **19.623095×** |
+| Latency reduction vs previous architecture | **94.903964%** |
 | Total speedup vs original | **353.93×** |
 | Total latency reduction vs original | **99.717%** |
 | CNN core clock | **50 MHz** |
@@ -300,7 +302,7 @@ This controlled experiment separated FPGA capacity from FPGA architecture.
 | Block RAM | 90.00% | 12.33% |
 | DSP48E1 | 8.89% | 1.08% |
 
-The Nexys Video substantially increased implementation headroom.
+The Nexys Video substantially increased implementation headroom, particularly for block RAM.
 
 However, the unchanged architecture retained identical latency:
 
@@ -339,6 +341,8 @@ Share of latency    ≈ 91.82%
 The original controller performed memory access, operand preparation, multiplication, accumulation, and output processing using a highly serial execution schedule.
 
 The dominant limitation was therefore the execution strategy rather than insufficient FPGA capacity.
+
+This finding motivated the subsequent FPGA-oriented architectural optimisations.
 
 ---
 
@@ -384,6 +388,8 @@ Detailed analysis:
 ## Pipelined Conv2
 
 The first optimisation reorganised the Conv2 MAC schedule around registered arithmetic.
+
+The objective was to reduce state-machine overhead while preserving the established W8A8 numerical computation.
 
 This reduced four-frame latency from:
 
@@ -441,7 +447,7 @@ Two-, four-, and eight-lane Conv1 configurations were analysed.
 | 4 lanes | 227.185600 ms | 17.606750 fps |
 | 8 lanes | 190.157760 ms | 21.035166 fps |
 
-Four lanes were selected as the design-space knee.
+Four lanes were selected as the design-space knee because the eight-lane configuration offered a smaller whole-system improvement while increasing DSP demand, routing pressure, fan-out, parameter-bank connectivity, and verification complexity.
 
 The resulting architecture achieved:
 
@@ -537,11 +543,13 @@ streaming_3x3_window_generator.v
 spatial_window_set_replay_buffer.v
 ```
 
+This reduces unnecessary data movement and enables greater processing overlap.
+
 ---
 
 ## Four-Lane Streaming Convolution
 
-The main convolution datapath processes four output channels concurrently.
+The principal convolution datapath processes four output channels concurrently.
 
 Each lane evaluates a complete 3 × 3 kernel using nine multiplication operations.
 
@@ -553,7 +561,7 @@ Therefore:
 36 kernel multiplications
 ```
 
-can be active during four-lane processing.
+can be active during four-lane convolution processing.
 
 Relevant RTL includes:
 
@@ -717,6 +725,8 @@ This represents approximately:
 
 The CNN core clock remains fixed at 50 MHz.
 
+The reported latency values are **board-level RTL simulation measurements**, not direct physical hardware timing measurements.
+
 ---
 
 ## Per-Frame Streaming Behaviour
@@ -820,7 +830,7 @@ The board-level implementation provides status outputs for:
 - feature-data parity/debug status
 
 <p align="center">
-  <img src="assets/vivado_results/streaming/nexys-video-streaming-pass.png" alt="Final Nexys Video streaming FPGA validation" width="900">
+  <img src="assets/hardware_validation/nexys_video/nexys-video-streaming-pass.png" alt="Final Nexys Video streaming FPGA validation" width="900">
 </p>
 
 <p align="center">
@@ -854,7 +864,11 @@ Before the final streaming redesign, the preceding four-lane scheduled architect
   <img src="assets/vivado_results/optimization/optimized-temporal-regression.png" alt="Optimized four-frame temporal feature regression" width="850">
 </p>
 
-This earlier result demonstrates that exact numerical equivalence was preserved throughout the incremental optimisation process.
+<p align="center">
+  <em>Earlier four-frame RTL regression for the optimized scheduled architecture.</em>
+</p>
+
+This historical result demonstrates that exact numerical equivalence was preserved throughout the incremental optimisation process.
 
 ---
 
@@ -872,6 +886,10 @@ The preceding four-lane architecture was implemented on both FPGA targets.
 <p align="center">
   <img src="assets/vivado_results/optimization/optimized-resource-utilization-basys3.png" alt="Optimized Basys-3 resource utilisation" width="47%">
   <img src="assets/vivado_results/optimization/optimized-resource-utilization-nexys-video.png" alt="Optimized Nexys Video resource utilisation" width="47%">
+</p>
+
+<p align="center">
+  <em>Resource utilisation of the preceding four-lane optimized architecture on Basys-3 and Nexys Video.</em>
 </p>
 
 ---
@@ -892,6 +910,10 @@ The preceding four-lane architecture was implemented on both FPGA targets.
 <p align="center">
   <img src="assets/vivado_results/optimization/optimized-timing-basys3.png" alt="Optimized Basys-3 routed timing summary" width="47%">
   <img src="assets/vivado_results/optimization/optimized-timing-nexys-video.png" alt="Optimized Nexys Video routed timing summary" width="47%">
+</p>
+
+<p align="center">
+  <em>Routed timing closure for the preceding optimized architecture on both FPGA platforms.</em>
 </p>
 
 Both implementations successfully completed synthesis, placement, routing, design-rule checking, timing analysis, and bitstream generation.
@@ -984,17 +1006,20 @@ hybrid-fpga-cnn-gru-autonomous-driving/
     │
     ├── hardware_validation/
     │   ├── basys3/
+    │   │   └── basys3-physical-validation.jpg
+    │   │
     │   └── nexys_video/
+    │       ├── nexys-video-physical-validation.jpg
+    │       └── nexys-video-streaming-pass.png
     │
     └── vivado_results/
         ├── device_scalability/
         ├── optimization/
         └── streaming/
-            ├── nexys-video-streaming-pass.png
+            ├── README.md
             ├── nexys-video-timing-summary.png
             ├── nexys-video-utilization.png
-            ├── streaming-latency-verification.png
-            └── README.md
+            └── streaming-latency-verification.png
 ```
 
 ---
@@ -1235,7 +1260,7 @@ Bulk generated vectors and dissertation-only data remain excluded.
 - Added streaming SAME-padding.
 - Added final feature reordering to preserve the channel-major temporal interface.
 - Reduced four-frame latency from 227.185600 ms to 11.577460 ms.
-- Achieved a further 19.623095× speedup over the Stage-06 architecture.
+- Achieved a further 19.623095× speedup over the preceding architecture.
 - Achieved approximately 353.93× total speedup over the original implementation.
 - Increased effective throughput from 0.976186 fps to 345.498926 fps.
 - Preserved all 32,768 expected W8A8 temporal feature values exactly.
@@ -1354,7 +1379,7 @@ Detailed project documentation is available here:
 
 The current FPGA implementation should be interpreted within the following scope:
 
-- reported latency is derived from board-wrapper RTL simulation rather than direct physical timing instrumentation
+- reported latency is derived from board-level RTL simulation rather than direct physical timing instrumentation
 - the controlled architectural comparison uses a 50 MHz CNN core clock
 - maximum achievable CNN core frequency has not been fully explored
 - the complete CNN-GRU inference pipeline is not implemented entirely in FPGA programmable logic
