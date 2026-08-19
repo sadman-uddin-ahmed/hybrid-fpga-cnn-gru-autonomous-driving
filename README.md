@@ -33,7 +33,7 @@ The project has been implemented and evaluated using two Xilinx Artix-7 FPGA pla
 
 <p align="center">
   <img src="assets/hardware_validation/basys3/basys3-physical-validation.jpg" alt="Basys-3 physical FPGA validation" width="47%">
-  <img src="assets/hardware_validation/nexys_video/nexys-video-physical-validation.png" alt="Nexys Video physical FPGA validation" width="47%">
+  <img src="assets/hardware_validation/nexys_video/nexys-video-physical-validation.jpg" alt="Nexys Video physical FPGA validation" width="47%">
 </p>
 
 <p align="center">
