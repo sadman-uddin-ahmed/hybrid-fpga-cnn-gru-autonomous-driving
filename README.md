@@ -1,12 +1,21 @@
 # Hybrid FPGA-CNN-GRU Perception for Autonomous Driving
 
-This repository presents a public technical portfolio version of my ongoing MSc dissertation project on hardware-aware autonomous-driving perception using quantized CNN feature extraction, Verilog FPGA implementation, temporal feature buffering, and CNN-GRU temporal modelling.
+This repository presents a public technical portfolio version of my ongoing MSc dissertation project on hardware-aware autonomous-driving perception using quantized CNN feature extraction, Verilog FPGA implementation, temporal feature buffering, FPGA-native streaming/dataflow acceleration, and CNN-GRU temporal modelling.
 
-The project investigates how a compact spatial CNN can be extended into a temporal perception pipeline while remaining compatible with FPGA deployment. Development has progressed from software CNN validation and W8A8 quantisation through Basys-3 implementation, Nexys Video scalability analysis, and FPGA-oriented architectural optimisation.
+The project investigates how a compact spatial CNN can be extended into a temporal perception pipeline while remaining compatible with FPGA deployment. Development has progressed from software CNN validation and W8A8 quantisation through Basys-3 implementation, Nexys Video scalability analysis, scheduled RTL optimisation, and finally an FPGA-native streaming/dataflow redesign.
 
-The current FPGA architecture reduces four-frame CNN feature-extraction latency from **4097.577920 ms to 227.185600 ms** at the same **50 MHz CNN core clock**, corresponding to an **18.04x architectural speedup** and approximately **94.46% latency reduction**, while preserving the complete **32,768-value W8A8 temporal feature sequence with zero mismatches**.
+The final FPGA architecture reduces four-frame CNN feature-extraction latency from **4097.577920 ms to 11.577460 ms** at the same **50 MHz CNN core clock**.
 
-> **Measurement note:** FPGA latency values reported in this repository are derived from board-level RTL simulation. Physical FPGA deployment has also been demonstrated during the project, but the detailed latency figures are not direct oscilloscope, ILA, UART, or hardware-counter measurements.
+This corresponds to approximately:
+
+- **353.93× total speedup** relative to the original FPGA architecture
+- **99.717% total latency reduction**
+- **19.623095× speedup** relative to the preceding four-lane scheduled architecture
+- **345.498926 fps effective throughput**
+- **32,768 / 32,768 expected W8A8 temporal features matched**
+- **0 numerical mismatches**
+
+> **Measurement note:** FPGA latency values reported in this repository are derived from board-level RTL simulation. Physical FPGA deployment has also been demonstrated, including execution of the final streaming architecture on the Nexys Video, but the detailed latency figures are not direct oscilloscope, ILA, UART, or external hardware-counter measurements.
 
 ---
 
@@ -16,16 +25,16 @@ The project has been implemented and evaluated using two Xilinx Artix-7 FPGA pla
 
 | Platform | FPGA | Role |
 |---|---|---|
-| Digilent Basys-3 | XC7A35T | Original FPGA implementation and constrained-device validation |
-| Digilent Nexys Video | XC7A200T | Device-scalability evaluation and higher-capacity implementation |
+| Digilent Basys-3 | XC7A35T | Original implementation, constrained-device validation, and earlier architectural optimisation |
+| Digilent Nexys Video | XC7A200T | Device-scalability analysis and final FPGA-native streaming/dataflow implementation |
 
 <p align="center">
   <img src="assets/hardware_validation/basys3/basys3-physical-validation.jpg" alt="Basys-3 physical FPGA validation" width="47%">
-  <img src="assets/hardware_validation/nexys_video/nexys-video-physical-validation.jpg" alt="Nexys Video physical FPGA validation" width="47%">
+  <img src="assets/hardware_validation/nexys_video/nexys-video-streaming-pass.png" alt="Nexys Video final streaming FPGA validation" width="47%">
 </p>
 
 <p align="center">
-  <em>Physical FPGA validation evidence from the Basys-3 and Nexys Video implementation stages.</em>
+  <em>Physical FPGA validation evidence from the Basys-3 implementation and final Nexys Video streaming architecture.</em>
 </p>
 
 ---
@@ -48,20 +57,32 @@ Completed work currently includes:
 - Basys-3 Artix-7 FPGA implementation
 - physical Basys-3 validation
 - controlled Basys-3 to Nexys Video FPGA port
-- Nexys Video implementation and physical validation
 - FPGA device-resource scalability analysis
-- detailed latency bottleneck analysis
+- detailed cycle-level latency bottleneck analysis
 - pipelined Conv2 MAC optimisation
 - four-output-channel Conv2 parallelisation
 - banked Conv2 parameter memory
 - four-output-channel Conv1 parallelisation
 - optimized Basys-3 and Nexys Video implementation
-- exact 32,768-feature optimized RTL regression
-- timing closure and bitstream generation on both FPGA targets
+- exact 32,768-feature scheduled-architecture RTL regression
+- FPGA-native streaming/dataflow architecture redesign
+- multichannel streaming 3 × 3 window generation
+- spatial window-set replay buffering
+- four-lane streaming convolution datapaths
+- streaming parameter banking
+- shared pipelined requantisation
+- ready/valid backpressure handling
+- streaming 2 × 2 MaxPool
+- streaming SAME-padding adaptation
+- final CNN feature reordering
+- exact 32,768-feature streaming regression
+- post-implementation timing and resource analysis
+- bitstream generation
+- physical Nexys Video validation of the final streaming architecture
 
 ---
 
-## System Overview
+# System Overview
 
 The hybrid perception architecture combines FPGA-side spatial feature extraction with host-side temporal classification.
 
@@ -77,32 +98,108 @@ The hybrid perception architecture combines FPGA-side spatial feature extraction
 Four consecutive 64 × 64 RGB frames
                 |
                 v
-       W8A8 CNN on FPGA
+         W8A8 CNN on FPGA
                 |
-       Conv1 -> ReLU -> MaxPool
+        Conv1 -> ReLU -> MaxPool
                 |
-       Conv2 -> ReLU -> MaxPool
-                |
-                v
-       8,192 features/frame
+        Conv2 -> ReLU -> MaxPool
                 |
                 v
-     Four-frame temporal buffer
+        8,192 features/frame
                 |
                 v
-  32,768 signed 8-bit features
+      Four-frame temporal buffer
                 |
                 v
-      Host-side reconstruction
+   32,768 signed 8-bit features
+                |
+                v
+       Host-side reconstruction
                 |
                 v
           CNN-GRU classifier
                 |
                 v
-      Car-present / no-car
+        Car-present / no-car
 ```
 
-The FPGA implementation currently covers the quantized CNN feature-extraction and temporal-buffering portion of the system. The complete CNN-GRU recurrent classifier is not currently implemented entirely in FPGA programmable logic.
+The FPGA implementation covers the quantized CNN feature-extraction and four-frame temporal-buffering portion of the system.
+
+The CNN-GRU recurrent classifier currently remains on the host side rather than being implemented entirely in FPGA programmable logic.
+
+---
+
+# Final FPGA-Native Streaming Architecture
+
+The final FPGA implementation replaces the preceding heavily scheduled CNN execution structure with a streaming/dataflow architecture designed to exploit FPGA concurrency and spatial data reuse.
+
+<p align="center">
+  <img src="assets/architecture/fpga-oriented-streaming-cnn-architecture.png" alt="FPGA-native streaming CNN architecture" width="900">
+</p>
+
+<p align="center">
+  <em>Final FPGA-native streaming/dataflow CNN temporal feature-extraction architecture.</em>
+</p>
+
+The final processing path is:
+
+```text
+Padded RGB input stream
+        |
+        v
+Multichannel streaming 3 × 3 window generation
+        |
+        v
+Spatial window-set replay buffering
+        |
+        v
+Four-lane convolution
+        |
+        v
+Channel accumulation
+        |
+        v
+Shared pipelined requantisation
+        |
+        v
+ReLU
+        |
+        v
+Streaming 2 × 2 MaxPool
+        |
+        v
+Streaming SAME-padding adapter
+        |
+        v
+Four-lane Conv2 processing
+        |
+        v
+ReLU
+        |
+        v
+Streaming 2 × 2 MaxPool
+        |
+        v
+Raw CNN feature stream
+        |
+        v
+Feature reorder buffer
+        |
+        v
+8,192-value channel-major frame vector
+        |
+        v
+Four-frame temporal BRAM
+        |
+        v
+32,768 signed 8-bit temporal features
+```
+
+Ready/valid handshaking is used between major streaming stages so downstream backpressure can stall upstream processing without corrupting feature ordering or numerical behaviour.
+
+Detailed documentation:
+
+[`docs/fpga-streaming-dataflow.md`](docs/fpga-streaming-dataflow.md)
 
 ---
 
@@ -113,9 +210,11 @@ Additional architecture diagrams are available in `assets/architecture/`.
 | Diagram | Purpose |
 |---|---|
 | [`hybrid-architecture.png`](assets/architecture/hybrid-architecture.png) | Complete hybrid FPGA-CNN-GRU processing flow |
-| [`fpga-side-architecture.png`](assets/architecture/fpga-side-architecture.png) | Baseline Basys-3 FPGA-side architecture showing CNN feature extraction, temporal buffering, board controls, and status logic before later architectural optimisation |
-| [`four-frame-control-flow.png`](assets/architecture/four-frame-control-flow.png) | Baseline four-frame FPGA control sequence used before the later pipelined and multi-lane architecture optimisations |
-| [`host-side-classification-chain.png`](assets/architecture/host-side-classification-chain.png) | Host-side reconstruction, tensor preparation, and CNN-GRU classification |
+| [`fpga-oriented-streaming-cnn-architecture.png`](assets/architecture/fpga-oriented-streaming-cnn-architecture.png) | Final FPGA-native streaming/dataflow CNN architecture |
+| [`fpga-side-architecture.png`](assets/architecture/fpga-side-architecture.png) | Earlier Basys-3 FPGA-side architecture |
+| [`four-frame-control-flow.png`](assets/architecture/four-frame-control-flow.png) | Earlier scheduled four-frame FPGA control sequence |
+| [`host-side-classification-chain.png`](assets/architecture/host-side-classification-chain.png) | Host-side reconstruction and CNN-GRU classification |
+
 ---
 
 # Headline Results
@@ -136,25 +235,31 @@ Additional architecture diagrams are available in `assets/architecture/`.
 | CNN-GRU false negatives | 1 |
 | Hybrid prediction preservation | 750 / 750 |
 
-## Current FPGA Optimisation Results
+## Final FPGA Results
 
 | Metric | Result |
 |---|---:|
 | Original four-frame latency | 4097.577920 ms |
-| Current four-frame latency | 227.185600 ms |
-| Original average latency/frame | 1024.394480 ms |
-| Current average latency/frame | 56.796400 ms |
-| Original estimated throughput | 0.976186 fps |
-| Current estimated throughput | 17.606750 fps |
-| Architectural speedup | **18.04x** |
-| Latency reduction | **94.46%** |
-| CNN core clock | 50 MHz |
-| Temporal features verified | 32,768 |
-| Feature mismatches | 0 |
+| Previous optimized four-frame latency | 227.185600 ms |
+| **Final streaming four-frame latency** | **11.577460 ms** |
+| Final average latency/frame | **2.894365 ms** |
+| Final throughput | **345.498926 fps** |
+| Speedup vs previous architecture | **19.623095×** |
+| Latency reduction vs previous architecture | **94.903964%** |
+| Total speedup vs original architecture | **353.93×** |
+| Total latency reduction vs original | **99.717%** |
+| CNN core clock | **50 MHz** |
+| Temporal features verified | **32,768** |
+| Feature mismatches | **0** |
+| Final regression | **PASS** |
 
-The 18.04x improvement was achieved **without increasing the controlled 50 MHz CNN core frequency**. The performance gain therefore comes primarily from reduced execution-cycle count through pipelining, output-channel parallelism, and memory banking.
+The final performance improvement was achieved **without increasing the controlled 50 MHz CNN core clock**.
 
-A detailed breakdown is available in [`docs/results-summary.md`](docs/results-summary.md).
+The acceleration comes from reducing execution serialization and exploiting streaming data movement, spatial reuse, arithmetic parallelism, parameter banking, pipelining, and inter-stage overlap.
+
+Detailed results:
+
+[`docs/results-summary.md`](docs/results-summary.md)
 
 ---
 
@@ -170,13 +275,13 @@ The software CNN baseline uses the following feature-extraction path:
         |
        ReLU
         |
-     MaxPool
+      MaxPool
         |
       Conv2
         |
        ReLU
         |
-     MaxPool
+      MaxPool
         |
         v
 32 × 16 × 16
@@ -185,7 +290,9 @@ The software CNN baseline uses the following feature-extraction path:
 8,192 features
 ```
 
-The full software CNN also contains fully connected classification layers. For FPGA and hybrid processing, the 8,192-feature convolutional representation before those classifier layers is used.
+The full software CNN also contains fully connected classification layers.
+
+For FPGA and hybrid processing, the 8,192-feature convolutional representation before those classifier layers is used.
 
 W8A8 quantisation was selected as the FPGA implementation format.
 
@@ -208,7 +315,7 @@ Three recurrent temporal architectures were evaluated using identical four-frame
 |---|---:|---:|---:|---:|
 | CNN-RNN | 1,065,474 | 98.40% | 99.41% | 99.12% |
 | CNN-LSTM | 4,261,122 | 99.07% | 99.56% | 99.49% |
-| CNN-GRU | 3,195,906 | 99.07% | 99.85% | 99.49% |
+| CNN-GRU | 3,195,906 | **99.07%** | **99.85%** | **99.49%** |
 
 CNN-GRU was selected because it matched CNN-LSTM test accuracy and F1-score while:
 
@@ -216,7 +323,7 @@ CNN-GRU was selected because it matched CNN-LSTM test accuracy and F1-score whil
 - achieving the highest recall
 - producing the lowest false-negative count
 
-A detailed comparison is available in:
+Detailed comparison:
 
 [`docs/temporal-model-comparison.md`](docs/temporal-model-comparison.md)
 
@@ -245,13 +352,13 @@ The temporal buffer uses the following address organisation:
 | Frame 2 | 16,384 to 24,575 |
 | Frame 3 | 24,576 to 32,767 |
 
-The complete optimized regression checks both the streamed CNN outputs and the stored temporal-buffer contents.
+The final streaming design preserves this established temporal interface.
 
 ---
 
 # FPGA Device Scalability
 
-The validated temporal feature-extraction architecture was first transferred from the Basys-3 to the substantially larger Nexys Video FPGA **without changing the architecture or the 50 MHz CNN core clock**.
+The validated temporal feature-extraction architecture was transferred from the Basys-3 to the substantially larger Nexys Video FPGA **without changing the architecture or the 50 MHz CNN core clock**.
 
 This controlled experiment separated FPGA capacity from FPGA architecture.
 
@@ -272,7 +379,7 @@ However, the unchanged architecture retained identical latency:
 |---|---:|---:|
 | Four-frame latency | 4097.577920 ms | 4097.577920 ms |
 | Average latency/frame | 1024.394480 ms | 1024.394480 ms |
-| Estimated throughput | 0.976186 fps | 0.976186 fps |
+| Throughput | 0.976186 fps | 0.976186 fps |
 
 Therefore:
 
@@ -292,7 +399,7 @@ Full details:
 
 # FPGA Bottleneck Analysis
 
-Cycle-level analysis identified Conv2 as the dominant component of the original architecture.
+Cycle-level analysis identified Conv2 as the dominant component of the original FPGA architecture.
 
 ```text
 Conv2 cycles/frame ≈ 47,028,224
@@ -302,31 +409,32 @@ Share of latency    ≈ 91.82%
 
 The original controller performed memory access, operand preparation, multiplication, accumulation, and output processing using a highly serial execution schedule.
 
-The primary limitation was therefore the hardware scheduling strategy rather than insufficient FPGA capacity.
+The primary limitation was therefore the hardware execution strategy rather than insufficient FPGA capacity.
 
-This finding motivated a sequence of FPGA-oriented architectural optimisations.
+This finding motivated the subsequent FPGA-oriented architectural redesigns.
 
 ---
 
 # FPGA Architecture Optimisation
 
-The architecture was optimized incrementally so that every accepted change could be independently verified.
+The architecture was initially optimized incrementally so that each accepted modification could be independently verified before moving to a more fundamental streaming implementation.
 
 ## Performance Progression
 
-| Architecture | Four-Frame Latency | Average per Frame | Estimated Throughput | Speedup |
+| Architecture | Four-Frame Latency | Average per Frame | Throughput | Speedup vs Original |
 |---|---:|---:|---:|---:|
-| Original architecture | 4097.577920 ms | 1024.394480 ms | 0.976186 fps | 1.00x |
-| Pipelined Conv2 MAC | 752.128960 ms | 188.032240 ms | 5.318237 fps | 5.45x |
-| Four-lane Conv2 | 449.352640 ms | 112.338160 ms | 8.901695 fps | 9.12x |
-| Four-lane Conv1 + Conv2 | **227.185600 ms** | **56.796400 ms** | **17.606750 fps** | **18.04x** |
+| Original architecture | 4097.577920 ms | 1024.394480 ms | 0.976186 fps | 1.00× |
+| Pipelined Conv2 MAC | 752.128960 ms | 188.032240 ms | 5.318237 fps | 5.45× |
+| Four-lane Conv2 | 449.352640 ms | 112.338160 ms | 8.901695 fps | 9.12× |
+| Four-lane Conv1 + Conv2 | 227.185600 ms | 56.796400 ms | 17.606750 fps | 18.04× |
+| **FPGA-native streaming/dataflow** | **11.577460 ms** | **2.894365 ms** | **345.498926 fps** | **353.93×** |
 
 ```text
-Original serial architecture
+Original scheduled architecture
         4097.577920 ms
                |
                v
-      Pipelined Conv2 MAC
+       Pipelined Conv2 MAC
          752.128960 ms
                |
                v
@@ -334,16 +442,24 @@ Original serial architecture
          449.352640 ms
                |
                v
-  Four-lane Conv1 + Conv2
+    Four-lane Conv1 + Conv2
          227.185600 ms
                |
                v
-        18.04x speedup
+FPGA-native streaming/dataflow
+          11.577460 ms
+               |
+               v
+        353.93× total speedup
 ```
 
-Detailed architecture analysis is available in:
+Detailed earlier optimisation analysis:
 
 [`docs/fpga-architecture-optimisation.md`](docs/fpga-architecture-optimisation.md)
+
+Final streaming redesign:
+
+[`docs/fpga-streaming-dataflow.md`](docs/fpga-streaming-dataflow.md)
 
 ---
 
@@ -351,7 +467,7 @@ Detailed architecture analysis is available in:
 
 The first optimisation reorganised the Conv2 MAC schedule around registered arithmetic.
 
-The goal was to reduce state-machine overhead while preserving the existing W8A8 numerical computation.
+The goal was to reduce state-machine overhead while preserving the established W8A8 numerical computation.
 
 This reduced four-frame latency from:
 
@@ -365,15 +481,15 @@ to:
 752.128960 ms
 ```
 
-for a **5.45x speedup**.
+for a **5.45× speedup**.
 
 ---
 
 ## Four-Lane Conv2
 
-The next architecture processes four independent Conv2 output channels concurrently.
+The next architecture processed four independent Conv2 output channels concurrently.
 
-The design uses:
+The design introduced:
 
 - four W8A8 multiplication lanes
 - four independent accumulators
@@ -393,7 +509,7 @@ Four-frame latency decreased further to:
 449.352640 ms
 ```
 
-corresponding to a **9.12x speedup** over the original architecture.
+corresponding to a **9.12× speedup** over the original architecture.
 
 ---
 
@@ -411,39 +527,370 @@ Two-, four-, and eight-lane Conv1 architectures were analysed.
 
 Four lanes were selected as the design-space knee because the eight-lane configuration offered a smaller whole-system improvement while increasing DSP demand, routing pressure, fan-out, parameter-bank connectivity, and verification complexity.
 
-The current Conv1 architecture broadcasts one signed 8-bit activation to four independent MAC lanes.
-
-Each output channel still accumulates the original:
+Each output channel retained the original:
 
 ```text
 3 × 3 × 3 = 27 signed products
 ```
 
-in the established order.
+The optimisation changed when independent channels were evaluated rather than changing the numerical computation of an individual output.
 
-Parallelism changes **when independent channels are calculated**, not the arithmetic sequence used to calculate an individual output value.
+The resulting Stage-06 architecture achieved:
+
+```text
+227.185600 ms / four frames
+17.606750 fps
+18.04× speedup vs original
+```
 
 ---
 
-# Exact Optimized RTL Verification
+# FPGA-Native Streaming/Dataflow Redesign
 
-Exact numerical equivalence was treated as a mandatory architectural constraint.
+The final optimisation moves beyond the preceding layer-by-layer scheduled architecture.
 
-The optimized implementation preserves:
+The main architectural features are:
 
-- signed 8-bit activations
-- signed 8-bit weights
-- registered signed multiplication
-- original per-channel accumulation order
-- signed 64-bit accumulation
-- fixed-point scaling
-- arithmetic shifting
-- rounding behaviour
-- ReLU
-- saturation
-- 2 × 2 maximum pooling
+- streaming multichannel 3 × 3 window generation
+- spatial window-set replay buffering
+- four-output-channel convolution processing
+- parameter banking
+- channel accumulation
+- shared pipelined requantisation
+- ready/valid flow control
+- streaming ReLU
+- streaming 2 × 2 MaxPool
+- streaming SAME-padding
+- Conv1-to-Conv2 dataflow
+- final feature reordering
+- four-frame temporal buffering
 
-The complete optimized temporal regression produced:
+---
+
+## Streaming Window Generation and Spatial Replay
+
+The incoming padded feature stream is converted into 3 × 3 neighbourhoods using dedicated streaming window-generation logic.
+
+Spatial window sets are retained and replayed for multiple output-channel groups rather than reconstructing the same neighbourhood separately for each group.
+
+Principal modules include:
+
+```text
+streaming_spatial_frontend.v
+streaming_multichannel_3x3_window_generator.v
+streaming_3x3_window_generator.v
+spatial_window_set_replay_buffer.v
+```
+
+This reduces unnecessary data movement and improves useful processing overlap.
+
+---
+
+## Four-Lane Streaming Convolution
+
+The main convolution datapath processes four output channels concurrently.
+
+Each lane evaluates a complete 3 × 3 kernel using nine multiplication operations.
+
+Therefore, during four-lane operation:
+
+```text
+4 lanes × 9 multiplications
+=
+36 kernel multiplications
+```
+
+can be active in the convolution datapath.
+
+Principal modules include:
+
+```text
+convolution_four_lane_datapath.v
+conv3x3_four_lane_channel_engine.v
+conv3x3_four_lane_parallel.v
+conv3x3_parallel_dot_product.v
+conv_four_lane_channel_accumulator.v
+convolution_group_cadence_controller.v
+```
+
+---
+
+## Parameter Banking and Requantisation
+
+The final datapath uses parallel parameter access and shared pipelined requantisation.
+
+Relevant modules include:
+
+```text
+streaming_convolution_parameter_bank.v
+four_lane_requantize_pipeline.v
+four_lane_requantize_dispatcher.v
+requantize_relu_pipeline.v
+```
+
+The streaming redesign changes the hardware execution architecture without changing the validated W8A8 CNN numerical model.
+
+---
+
+## Streaming Pooling and SAME Padding
+
+The final architecture includes dedicated streaming operators for pooling and Conv2 input preparation.
+
+Relevant modules include:
+
+```text
+streaming_maxpool_2x2.v
+streaming_same_padding_adapter.v
+streaming_convolution_maxpool_layer.v
+streaming_conv2_maxpool_layer.v
+streaming_conv2_layer.v
+```
+
+This allows the CNN stages to operate with substantially greater dataflow overlap than the earlier scheduled implementation.
+
+---
+
+## Feature Reordering
+
+The natural ordering of features generated by the streaming CNN differs from the established channel-major temporal-buffer interface.
+
+The final design therefore includes:
+
+```text
+streaming_feature_reorder_buffer.v
+```
+
+For the final 32 × 16 × 16 output tensor:
+
+```text
+feature_address =
+    output_channel × 256
+    + y × 16
+    + x
+```
+
+This restores the required 8,192-value channel-major frame representation before temporal buffering.
+
+---
+
+# Exact Streaming RTL Verification
+
+Exact numerical equivalence remained a mandatory requirement throughout the streaming redesign.
+
+The final four-frame regression produced:
+
+| Verification Metric | Result |
+|---|---:|
+| Frames processed | 4 |
+| Accepted padded inputs | 52,272 |
+| Raw final-CNN features | 32,768 |
+| Reordered temporal features | 32,768 |
+| Expected-vector comparisons | **32,768** |
+| Expected-vector mismatches | **0** |
+| Duplicate reordered addresses | 0 |
+| Missing reordered addresses | 0 |
+| Address/frame-index errors | 0 |
+| Feature X/Z errors | 0 |
+| Frame completion pulses | 4 |
+| Temporal frames captured | 4 |
+| `temporal_capture_complete` | 1 |
+| Final regression | **PASS** |
+
+<p align="center">
+  <img src="assets/vivado_results/streaming/streaming-latency-verification.png" alt="Final streaming CNN four-frame latency and numerical verification" width="900">
+</p>
+
+<p align="center">
+  <em>Final board-wrapper RTL regression covering complete four-frame streaming execution, feature reordering, temporal capture, and exact expected-vector verification.</em>
+</p>
+
+The final architecture therefore reproduces:
+
+```text
+32,768 / 32,768 expected W8A8 temporal features
+0 mismatches
+```
+
+---
+
+# Final Streaming Latency Verification
+
+The final latency regression operates through the Nexys Video board-wrapper structure using:
+
+```text
+External board clock = 100 MHz
+CNN core clock       = 50 MHz
+```
+
+The regression includes parameter loading, four-frame input feeding, complete streaming CNN execution, feature reordering, temporal feature capture, and board-level completion logic.
+
+Final result:
+
+```text
+Four-frame cycles         = 578,873
+Four-frame latency        = 11.577460 ms
+Average latency/frame     = 2.894365 ms
+Effective throughput      = 345.498926 fps
+CNN core clock            = 50 MHz
+```
+
+Relative to the preceding four-lane scheduled architecture:
+
+```text
+227.185600 ms
+      |
+      v
+11.577460 ms
+
+19.623095× speedup
+94.903964% latency reduction
+```
+
+Relative to the original implementation:
+
+```text
+4097.577920 ms
+      |
+      v
+11.577460 ms
+
+353.93× total speedup
+99.717% total latency reduction
+```
+
+The CNN core frequency remains unchanged at 50 MHz.
+
+The reported latency values are **board-wrapper RTL simulation measurements**, not direct physical hardware timing measurements.
+
+---
+
+## Per-Frame Streaming Behaviour
+
+The four processed frames showed consistent streaming behaviour.
+
+| Measurement | Result |
+|---|---:|
+| First accepted input to first raw CNN output | 0.168300 ms |
+| First accepted input to final raw CNN output | 2.705000 ms |
+| Final raw output to reordered frame completion | 0.163860 ms |
+| First accepted input to reordered frame completion | 2.868860 ms |
+
+The complete four-frame average is slightly larger because it also includes board-wrapper and parameter-loading overhead.
+
+---
+
+# Final Nexys Video Resource Utilisation
+
+The final streaming architecture was synthesised, placed, and routed for:
+
+```text
+Digilent Nexys Video
+Xilinx Artix-7 XC7A200T
+xc7a200tsbg484-1
+Vivado 2025.1
+```
+
+Post-implementation utilisation:
+
+| Resource | Used | Available | Utilisation |
+|---|---:|---:|---:|
+| Slice LUTs | 11,194 | 133,800 | **8.37%** |
+| LUTs as logic | 5,672 | 133,800 | 4.24% |
+| LUTs as memory | 5,522 | - | - |
+| Distributed RAM LUTs | 5,400 | - | - |
+| Slice Registers | 6,223 | 267,600 | **2.33%** |
+| Block RAM | 28.5 | 365 | **7.81%** |
+| DSP48E1 | 104 | 740 | **14.05%** |
+| BUFGCTRL | 2 | 32 | **6.25%** |
+
+<p align="center">
+  <img src="assets/vivado_results/streaming/nexys-video-utilization.png" alt="Final Nexys Video streaming CNN resource utilisation" width="900">
+</p>
+
+Despite the substantially more parallel streaming datapath, the Nexys Video retains significant FPGA resource headroom.
+
+---
+
+# Final Nexys Video Routed Timing
+
+The final implementation meets the required 50 MHz CNN core timing constraint.
+
+| Timing Metric | Result |
+|---|---:|
+| CNN core period | 20.000 ns |
+| CNN core frequency | 50 MHz |
+| WNS | **+0.680 ns** |
+| TNS | 0.000 ns |
+| WHS | **+0.047 ns** |
+| THS | 0.000 ns |
+| Setup failing endpoints | 0 |
+| Hold failing endpoints | 0 |
+| Routable nets | 19,109 |
+| Fully routed nets | 19,109 |
+| Routing errors | 0 |
+
+<p align="center">
+  <img src="assets/vivado_results/streaming/nexys-video-timing-summary.png" alt="Final Nexys Video streaming CNN routed timing summary" width="900">
+</p>
+
+The final architecture therefore completes routing and timing closure successfully at the controlled 50 MHz CNN core frequency.
+
+---
+
+# Final Power Estimate
+
+Vivado 2025.1 post-route vectorless power analysis produced:
+
+| Metric | Result |
+|---|---:|
+| Total on-chip power | 0.213 W |
+| Dynamic power | 0.077 W |
+| Device static power | 0.136 W |
+| Estimated junction temperature | 25.7 °C |
+| Confidence | Medium |
+
+These figures are implementation estimates rather than direct physical board-power measurements.
+
+---
+
+# Physical Nexys Video Validation
+
+The generated final bitstream was programmed onto the physical Digilent Nexys Video.
+
+The board-level top exposes status information including:
+
+- Done
+- Busy
+- Started
+- Pass
+- Fail
+- `temporal_capture_complete`
+- captured frame-count status
+- temporal feature-data parity/debug status
+
+The implemented design reached the expected completed PASS state with temporal capture complete.
+
+<p align="center">
+  <img src="assets/hardware_validation/nexys_video/nexys-video-streaming-pass.png" alt="Physical Nexys Video final streaming CNN validation" width="900">
+</p>
+
+<p align="center">
+  <em>Physical execution of the final FPGA-native streaming CNN temporal feature-extraction architecture.</em>
+</p>
+
+The board photograph demonstrates successful execution of the routed implementation and board-level completion logic.
+
+The physical LED validation does **not** independently inspect all 32,768 internal feature values. Exact numerical equivalence is established by the self-checking RTL regression.
+
+Likewise, the reported 11.577460 ms latency is an RTL-simulation measurement rather than a direct physical timing measurement.
+
+---
+
+# Historical Scheduled-Architecture Verification
+
+Before the final streaming redesign, the optimized scheduled architecture was also verified exactly.
+
+The complete four-frame regression produced:
 
 | Verification Metric | Result |
 |---|---:|
@@ -457,47 +904,18 @@ The complete optimized temporal regression produced:
 | Final regression | **PASS** |
 
 <p align="center">
-  <img src="assets/vivado_results/optimization/optimized-temporal-regression.png" alt="Optimized four-frame temporal feature regression" width="850">
+  <img src="assets/vivado_results/optimization/optimized-temporal-regression.png" alt="Earlier optimized four-frame temporal feature regression" width="850">
 </p>
 
-<p align="center">
-  <em>Optimized four-frame RTL regression verifying the complete temporal CNN feature sequence.</em>
-</p>
-
-The architectural speedup was therefore achieved without changing the expected W8A8 feature results.
+This historical result demonstrates that exact numerical equivalence was maintained throughout the incremental optimisation process before the streaming architecture was introduced.
 
 ---
 
-# Optimized RTL Latency Verification
+# Historical Scheduled-Architecture Implementation
 
-The board-level latency-monitor testbench measures the top-level RTL execution interval using the external 100 MHz board clock while the CNN core operates at 50 MHz.
+The preceding four-lane architecture was implemented on both Basys-3 and Nexys Video.
 
-<p align="center">
-  <img src="assets/vivado_results/optimization/optimized-latency-monitor.png" alt="Optimized FPGA board-level RTL latency monitor" width="850">
-</p>
-
-<p align="center">
-  <em>Board-level RTL simulation of the current optimized CNN temporal feature-extraction architecture.</em>
-</p>
-
-Current simulation-derived performance:
-
-```text
-Four-frame latency      = 227.185600 ms
-Average latency/frame   = 56.796400 ms
-Estimated throughput    = 17.606750 fps
-Speedup vs original     = 18.04x
-Latency reduction       = 94.46%
-CNN core clock          = 50 MHz
-```
-
-These values are **RTL simulation measurements**, not direct physical hardware timing measurements.
-
----
-
-# Optimized FPGA Resource Utilisation
-
-The same current optimized RTL architecture was implemented for both FPGA targets.
+## Resource Utilisation
 
 | Resource | Basys-3 XC7A35T | Nexys Video XC7A200T |
 |---|---:|---:|
@@ -511,17 +929,7 @@ The same current optimized RTL architecture was implemented for both FPGA target
   <img src="assets/vivado_results/optimization/optimized-resource-utilization-nexys-video.png" alt="Optimized Nexys Video resource utilisation" width="47%">
 </p>
 
-<p align="center">
-  <em>Final resource utilisation of the same optimized architecture on Basys-3 and Nexys Video.</em>
-</p>
-
-The larger Nexys Video provides significantly greater resource headroom, but the underlying optimized architecture remains implementable on the smaller Basys-3.
-
----
-
-# Optimized Routed Timing
-
-Both optimized FPGA implementations meet the required 50 MHz CNN core timing constraint.
+## Routed Timing
 
 | Timing Metric | Basys-3 | Nexys Video |
 |---|---:|---:|
@@ -539,10 +947,6 @@ Both optimized FPGA implementations meet the required 50 MHz CNN core timing con
   <img src="assets/vivado_results/optimization/optimized-timing-nexys-video.png" alt="Optimized Nexys Video routed timing summary" width="47%">
 </p>
 
-<p align="center">
-  <em>Routed timing closure for the current optimized architecture on both FPGA platforms.</em>
-</p>
-
 Both targets successfully completed synthesis, placement, routing, design-rule checking, timing analysis, and bitstream generation.
 
 ---
@@ -558,10 +962,10 @@ FPGA W8A8 temporal features
 Feature reconstruction
           |
           v
-[batch, 4, 8192]
+     [batch, 4, 8192]
           |
           v
-       CNN-GRU
+        CNN-GRU
           |
           v
 Binary temporal prediction
@@ -598,15 +1002,18 @@ hybrid-fpga-cnn-gru-autonomous-driving/
 ├── verilog/
 │   ├── rtl/
 │   │   ├── baseline/
-│   │   └── optimized/
+│   │   ├── optimized/
+│   │   └── streaming/
 │   │
 │   ├── testbenches/
 │   │   ├── baseline/
-│   │   └── optimized/
+│   │   ├── optimized/
+│   │   └── streaming/
 │   │
 │   ├── constraints/
 │   │   ├── basys3/
 │   │   └── nexys_video/
+│   │       └── streaming/
 │   │
 │   └── verification_data/
 │       ├── parameters/
@@ -618,7 +1025,8 @@ hybrid-fpga-cnn-gru-autonomous-driving/
 │   ├── temporal-model-comparison.md
 │   ├── results-summary.md
 │   ├── fpga-device-scalability.md
-│   └── fpga-architecture-optimisation.md
+│   ├── fpga-architecture-optimisation.md
+│   └── fpga-streaming-dataflow.md
 │
 └── assets/
     ├── architecture/
@@ -628,7 +1036,8 @@ hybrid-fpga-cnn-gru-autonomous-driving/
     │
     └── vivado_results/
         ├── device_scalability/
-        └── optimization/
+        ├── optimization/
+        └── streaming/
 ```
 
 ---
@@ -670,11 +1079,13 @@ Selected files for:
 
 ## `verilog/rtl/baseline`
 
-Contains the earlier validated FPGA RTL architecture used as the reference point for architectural optimisation.
+Contains the earlier validated FPGA RTL architecture used as the initial reference point for later optimisation.
 
 ## `verilog/rtl/optimized`
 
-Contains the current optimized CNN temporal feature-extraction RTL, including:
+Contains the preceding scheduled/pipelined multi-lane CNN temporal feature-extraction architecture.
+
+Representative modules include:
 
 - `cnn_feature_demo_top.v`
 - `cnn_feature_extractor_bram_system.v`
@@ -686,25 +1097,105 @@ Contains the current optimized CNN temporal feature-extraction RTL, including:
 - `conv2_pool_bram_core.v`
 - `temporal_feature_buffer.v`
 
+## `verilog/rtl/streaming`
+
+Contains the final FPGA-native streaming/dataflow implementation.
+
+The selected public RTL includes:
+
+```text
+cnn_feature_streaming_nexys_video_top.v
+streaming_cnn_temporal_feature_extractor.v
+streaming_cnn_feature_vector_extractor.v
+streaming_cnn_feature_extractor.v
+streaming_feature_reorder_buffer.v
+temporal_feature_buffer.v
+
+streaming_convolution_maxpool_layer.v
+streaming_convolution_layer.v
+streaming_conv2_maxpool_layer.v
+streaming_conv2_layer.v
+
+streaming_spatial_frontend.v
+streaming_multichannel_3x3_window_generator.v
+streaming_3x3_window_generator.v
+spatial_window_set_replay_buffer.v
+
+convolution_four_lane_datapath.v
+conv3x3_four_lane_channel_engine.v
+conv3x3_four_lane_parallel.v
+conv3x3_parallel_dot_product.v
+conv_four_lane_channel_accumulator.v
+convolution_group_cadence_controller.v
+
+streaming_convolution_parameter_bank.v
+four_lane_requantize_pipeline.v
+four_lane_requantize_dispatcher.v
+requantize_relu_pipeline.v
+
+streaming_maxpool_2x2.v
+streaming_same_padding_adapter.v
+```
+
+---
+
+# Verilog Testbenches
+
 ## `verilog/testbenches/baseline`
 
-Contains the earlier functional verification environment.
+Contains the earlier functional-verification environment.
 
 ## `verilog/testbenches/optimized`
 
-Contains the current high-level regression and latency-monitor testbenches:
+Contains the high-level regression and latency-monitor testbenches for the preceding optimized scheduled architecture.
 
-- `cnn_temporal_capture_tb.v`
-- `cnn_board_latency_monitor_tb.v`
+Representative files include:
 
-## `verilog/constraints`
+```text
+cnn_temporal_capture_tb.v
+cnn_board_latency_monitor_tb.v
+```
 
-Contains board-specific Xilinx Design Constraints for:
+## `verilog/testbenches/streaming`
 
-- Basys-3
-- Nexys Video
+Contains selected self-checking verification for the final streaming architecture:
 
-The earlier Basys-3 top-level constraint configuration is also retained for baseline reproducibility.
+```text
+cnn_feature_streaming_latency_monitor_tb.v
+streaming_cnn_temporal_feature_extractor_tb.v
+streaming_cnn_four_frame_tb.v
+spatial_window_set_replay_buffer_tb.v
+streaming_same_padding_adapter_regression_tb.v
+streaming_feature_reorder_buffer_tb.v
+convolution_four_lane_datapath_tb.v
+```
+
+The selected set covers final board-wrapper latency verification, complete four-frame temporal verification, feature reordering, streaming SAME-padding, spatial replay buffering, and four-lane convolution operation.
+
+---
+
+# FPGA Constraints
+
+Board-specific Xilinx Design Constraints are provided for:
+
+```text
+verilog/constraints/basys3/
+verilog/constraints/nexys_video/
+```
+
+The final streaming Nexys Video constraints are provided under:
+
+```text
+verilog/constraints/nexys_video/streaming/
+```
+
+The final implementation uses:
+
+```text
+External board clock = 100 MHz
+CNN core clock       = 50 MHz
+FPGA                  = xc7a200tsbg484-1
+```
 
 ---
 
@@ -737,15 +1228,13 @@ temporal_sequence/
 └── temporal_expected_summary.txt
 ```
 
-These files provide the CNN parameters and the four-frame input/reference sequence required by the optimized functional regression.
+These files provide the CNN parameters and four-frame input/reference sequence used for FPGA verification.
 
 See:
 
 [`verilog/verification_data/README.md`](verilog/verification_data/README.md)
 
-for verification setup details.
-
-Bulk generated vectors and dissertation data remain excluded.
+Bulk generated vectors and dissertation-only data remain excluded.
 
 ---
 
@@ -766,12 +1255,23 @@ Bulk generated vectors and dissertation data remain excluded.
 - Redesigned Conv2 using registered pipelined MAC processing.
 - Introduced four-output-channel Conv2 parallelism and banked parameter memory.
 - Performed Conv1 parallelism design-space analysis.
-- Introduced four-output-channel Conv1 parallelism while preserving per-channel arithmetic order.
-- Reduced four-frame RTL-simulation latency by approximately 94.46%.
-- Increased estimated throughput from 0.976186 fps to 17.606750 fps.
-- Achieved an 18.04x architectural speedup at the same 50 MHz CNN core clock.
-- Preserved all 32,768 expected temporal feature values exactly after optimisation.
-- Closed routed timing and generated bitstreams on both Basys-3 and Nexys Video.
+- Introduced four-output-channel Conv1 parallelism.
+- Reduced four-frame latency from 4097.577920 ms to 227.185600 ms through scheduled RTL optimisation.
+- Redesigned the CNN around FPGA-native streaming/dataflow execution.
+- Implemented multichannel streaming 3 × 3 window generation.
+- Introduced spatial window-set replay buffering for input-data reuse.
+- Implemented four-lane convolution processing.
+- Implemented ready/valid backpressure handling.
+- Added streaming pooling and SAME-padding adaptation.
+- Added final feature reordering to preserve the established channel-major temporal interface.
+- Reduced four-frame latency from 227.185600 ms to 11.577460 ms through the streaming redesign.
+- Achieved a 19.623095× additional speedup over the preceding architecture.
+- Achieved approximately 353.93× total speedup relative to the original FPGA architecture.
+- Increased effective throughput from 0.976186 fps to 345.498926 fps.
+- Preserved all 32,768 expected W8A8 temporal feature values exactly.
+- Closed routed timing on the final Nexys Video implementation.
+- Generated the final streaming bitstream successfully.
+- Demonstrated successful physical execution on the Nexys Video.
 
 ---
 
@@ -785,12 +1285,12 @@ Included material covers:
 - FPGA processing-flow diagrams
 - RTL simulation
 - exact temporal regression
-- board-level latency monitoring
+- board-wrapper latency monitoring
 - Vivado resource utilisation
 - routed timing closure
-- implemented FPGA designs
-- Basys-3 physical validation
-- Nexys Video physical validation
+- physical Basys-3 validation
+- physical Nexys Video validation
+- final streaming-architecture verification
 
 The evidence is deliberately curated to keep the repository readable while retaining the most important implementation and verification results.
 
@@ -808,7 +1308,7 @@ https://www.cvlibs.net/datasets/kitti/
 
 A small curated quantized temporal verification sequence is included specifically to support reproduction of the published FPGA RTL regression.
 
-Further information is provided in:
+Further information:
 
 [`docs/dataset-and-artifact-notes.md`](docs/dataset-and-artifact-notes.md)
 
@@ -830,12 +1330,13 @@ The public repository intentionally excludes:
 - Vivado simulation databases
 - implementation run directories
 - generated bitstreams
+- full Vivado project archives
 - full dissertation reports
 - assessment materials
 - supervisor correspondence
 - large project ZIP archives
 
-Selected `.mem` files under `verilog/verification_data/` are intentionally included because they form the curated reproducibility package for the optimized RTL regression.
+Selected `.mem` files under `verilog/verification_data/` are intentionally included because they form the curated reproducibility package for the FPGA RTL regression.
 
 ---
 
@@ -845,7 +1346,7 @@ Selected `.mem` files under `verilog/verification_data/` are intentionally inclu
 - PyTorch
 - NumPy
 - Verilog HDL
-- Xilinx Vivado
+- Xilinx Vivado 2025.1
 - Fixed-point arithmetic
 - W8A8 quantisation
 - FPGA RTL simulation
@@ -854,6 +1355,10 @@ Selected `.mem` files under `verilog/verification_data/` are intentionally inclu
 - DSP-based multiply-accumulate processing
 - FPGA memory banking
 - output-channel parallelism
+- streaming dataflow
+- ready/valid flow control
+- spatial data reuse
+- pipelined requantisation
 - Digilent Basys-3
 - Digilent Nexys Video
 - Xilinx Artix-7
@@ -867,8 +1372,9 @@ Selected `.mem` files under `verilog/verification_data/` are intentionally inclu
 Detailed project summaries are available here:
 
 - [Results Summary](docs/results-summary.md)
-- [FPGA Device Scalability](docs/fpga-device-scalability.md)
+- [FPGA-Native Streaming Dataflow Architecture](docs/fpga-streaming-dataflow.md)
 - [FPGA Architecture Optimisation](docs/fpga-architecture-optimisation.md)
+- [FPGA Device Scalability](docs/fpga-device-scalability.md)
 - [Temporal Model Comparison](docs/temporal-model-comparison.md)
 - [Dataset and Artifact Notes](docs/dataset-and-artifact-notes.md)
 
@@ -878,42 +1384,58 @@ Detailed project summaries are available here:
 
 The current FPGA implementation should be interpreted within the following scope:
 
-- reported latency is derived from board-level RTL simulation rather than direct physical timing instrumentation
-- the controlled architecture comparison uses a 50 MHz CNN core clock
-- maximum achievable CNN core frequency has not yet been fully explored
+- reported latency is derived from board-wrapper RTL simulation rather than direct physical timing instrumentation
+- the controlled architectural comparison uses a 50 MHz CNN core clock
+- maximum achievable CNN core frequency has not been fully explored
 - the complete CNN-GRU inference pipeline is not implemented entirely in programmable logic
-- deeper streaming and inter-layer overlap remain potential optimisation opportunities
-- additional kernel/input-channel parallelism may provide further latency reduction
-- direct hardware latency instrumentation remains future work
+- physical board execution does not independently inspect every internal temporal feature
+- Vivado power results are estimates rather than direct electrical measurements
+- direct physical latency instrumentation using an ILA, external timing output, hardware counter, or oscilloscope remains potential future work
+- further architectural scaling could investigate additional lane parallelism, input-channel parallelism, clock-frequency scaling, or hardware integration of the temporal classifier
 
-The current architecture therefore represents a substantial FPGA-side acceleration milestone rather than the endpoint of the optimisation process.
+The current architecture represents the final FPGA-native streaming feature-extraction milestone of the present implementation work rather than a claim that no further hardware optimisation is possible.
 
 ---
 
 # Main Engineering Finding
 
-The FPGA work produced a clear result:
+The FPGA work produced a clear architectural result:
 
-> **Moving the unchanged CNN architecture to a larger FPGA created resource headroom, but the actual performance improvement came from redesigning the architecture to exploit that hardware through pipelining, parallel MAC execution, and memory banking.**
+> **Moving the unchanged CNN architecture to a larger FPGA created substantial resource headroom, but the major performance gains were obtained only after redesigning the execution architecture to exploit FPGA concurrency, first through pipelined multi-lane processing and then through FPGA-native streaming/dataflow execution.**
 
 At the same 50 MHz CNN core frequency:
 
 ```text
-Original architecture:
+Original architecture
 4097.577920 ms / four frames
 0.976186 fps
 
-Current optimized architecture:
+        |
+        v
+
+Four-lane scheduled architecture
 227.185600 ms / four frames
 17.606750 fps
 
-Improvement:
-18.04x speedup
-94.46% latency reduction
-32,768 / 32,768 features preserved exactly
+        |
+        v
+
+Final streaming/dataflow architecture
+11.577460 ms / four frames
+345.498926 fps
 ```
 
-This demonstrates the distinction between simply targeting a larger FPGA and designing an architecture that uses FPGA resources effectively.
+Final improvement relative to the original architecture:
+
+```text
+353.93× total speedup
+99.717% total latency reduction
+32,768 / 32,768 expected features preserved
+0 mismatches
+50 MHz CNN core clock unchanged
+```
+
+The result demonstrates the distinction between simply targeting a larger FPGA and designing a computation and memory architecture that uses FPGA resources effectively.
 
 ---
 
@@ -922,6 +1444,7 @@ This demonstrates the distinction between simply targeting a larger FPGA and des
 This repository is a public technical portfolio version of an ongoing MSc dissertation project.
 
 It is intended to demonstrate:
+
 - hardware-aware machine-learning development
 - quantized CNN implementation
 - Verilog RTL design
@@ -929,6 +1452,9 @@ It is intended to demonstrate:
 - FPGA implementation and timing closure
 - architectural bottleneck analysis
 - resource-aware FPGA optimisation
+- streaming/dataflow hardware architecture
+- fixed-point numerical verification
+- physical FPGA deployment
 - hybrid FPGA and host-side temporal inference
 
 It is not intended to reproduce the complete dissertation submission package.
